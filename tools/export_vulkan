@@ -1,0 +1,21 @@
+
+host=`uname`
+
+DIR=macOS
+if [ "$host" = 'Linux' ];
+then
+  DIR=x86_64
+fi
+
+export VULKAN_SDK=${VULKAN_SDK:-$HOME/vulkan/1.2.182.0/$DIR}
+
+if [ "$host" = 'Darwin' ];
+then
+  export VK_ICD_FILENAMES=$VULKAN_SDK/share/vulkan/icd.d/MoltenVK_icd.json
+  export VK_LAYER_PATH=$VULKAN_SDK/share/vulkan/explicit_layer.d
+  export LDFLAGS="$LDFLAGS -L$VULKAN_SDK/lib"
+else
+  export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
+fi
+
+export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
