@@ -1,10 +1,6 @@
 module;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 #include <vulkan/vulkan.h>
-#pragma clang diagnostic pop
-
 #include <cstdint>
 
 export module engine;

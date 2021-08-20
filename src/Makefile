@@ -1,32 +1,32 @@
-CLANG=clang++
+CC=g++-11
 CFLAGS=\
 	-std=c++20 \
-	-fmodules \
+	-fmodules-ts \
+	-Wall \
+	-Wextra \
+	-pedantic-errors \
+	-I$(VULKAN_SDK)/include
+
+CLANG_FLAGS=\
 	-fbuiltin-module-map \
 	-fimplicit-modules \
 	-fimplicit-module-maps \
 	-fprebuilt-module-path=. \
-	-Wall \
-	-Wextra \
 	-Weverything \
 	-Wno-c++98-compat \
 	-Wno-c++98-compat-pedantic \
 	-Wno-poison-system-directories \
-	-pedantic-errors \
-	-I$(VULKAN_SDK)/include
+	--precompile -x c++-module
 
 MODULES=\
 	engine.cc
 
-PCM_FILES=$(patsubst %.cc,%.pcm,$(MODULES))
+PCM_FILES=$(patsubst %.cc,%.gcm,$(MODULES))
 
 all: elysian
 
-%.pcm: %.cc
-	$(CLANG) $(CFLAGS) --precompile -x c++-module -o $@ $<
-
-elysian: $(PCM_FILES) main.cc
-	$(CLANG) $(CFLAGS) $(PCM_FILES) main.cc -o elysian
+elysian: $(MODULES) main.cc
+	$(CC) $(CFLAGS) $(MODULES) main.cc -o elysian
 
 clean:
-	rm elysian *.pcm
+	rm elysian
