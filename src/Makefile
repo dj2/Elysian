@@ -19,7 +19,8 @@ CLANG_FLAGS=\
 	--precompile -x c++-module
 
 MODULES=\
-	engine.cc
+	engine.cc \
+	engine_impl.cc
 
 PCM_FILES=$(patsubst %.cc,%.gcm,$(MODULES))
 
@@ -29,4 +30,4 @@ elysian: $(MODULES) main.cc
 	$(CC) $(CFLAGS) $(MODULES) main.cc -o elysian
 
 clean:
-	rm elysian
+	rm -rf elysian gcm.cache
