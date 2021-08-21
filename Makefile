@@ -32,7 +32,7 @@ tidy: $(HDRS) $(SRCS)
 	$(TIDY) $(HDRS) $(SRCS) -- $(CFLAGS)
 
 fmt: $(HDRS) $(SRCS)
-	$(FMT) -i $(HDRS) $(SRCS) -- $(CFLAGS)
+	$(FMT) -i $(HDRS) $(SRCS)
 
 %.o: %.cc %.h
 	$(CC) $(CFLAGS) $< -c -o $@

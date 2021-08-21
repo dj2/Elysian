@@ -11,7 +11,7 @@ namespace el {
 namespace engine {
 namespace {
 
-#define TO_VK_VERSION(variant, major, minor,patch) \
+#define TO_VK_VERSION(variant, major, minor, patch) \
   (((variant) << 29) | ((major) << 22) | ((minor) << 12) | ((patch)))
 
 #define ARRAY_SIZE(ary) (sizeof(ary) / sizeof((ary)[0]))
@@ -22,12 +22,11 @@ constexpr uint8_t kEngineMinor = 1;
 constexpr uint8_t kEnginePatch = 0;
 
 std::array<const char*, 1> kValidationLayers = {
-  {"VK_LAYER_KHRONOS_validation"}
-};
+    {"VK_LAYER_KHRONOS_validation"}};
 uint32_t kValidationLayerCount = ARRAY_SIZE(kValidationLayers);
 
 auto objectTypeToName(VkObjectType type) -> std::string_view {
-  switch(type) {
+  switch (type) {
     case VK_OBJECT_TYPE_INSTANCE:
       return "instance";
     case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
@@ -118,71 +117,72 @@ auto objectTypeToName(VkObjectType type) -> std::string_view {
   return "unknown";
 }
 
-auto debug_callback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-    VkDebugUtilsMessageTypeFlagsEXT type,
-    const VkDebugUtilsMessengerCallbackDataEXT* data,
-    void* /*user_data*/) -> VkBool32 {
+auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+                    VkDebugUtilsMessageTypeFlagsEXT type,
+                    const VkDebugUtilsMessengerCallbackDataEXT* data,
+                    void* /*user_data*/) -> VkBool32 {
   // ErrorData* err_data = static_cast<ErrorData*>(user_data);
 
   // if (err_data && err_data->cb) {
-    ErrorSeverity sev = ErrorSeverity::kError;
-    if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-      sev = ErrorSeverity::kWarning;
-    } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-      sev = ErrorSeverity::kInfo;
-    } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
-      sev = ErrorSeverity::kVerbose;
-    }
+  ErrorSeverity sev = ErrorSeverity::kError;
+  if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+    sev = ErrorSeverity::kWarning;
+  } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+    sev = ErrorSeverity::kInfo;
+  } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
+    sev = ErrorSeverity::kVerbose;
+  }
 
-    ErrorType ty = ErrorType::kGeneral;
-    if (type & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
-      ty = ErrorType::kPerformance;
-    } else if (type & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
-      ty = ErrorType::kValidation;
-    }
+  ErrorType ty = ErrorType::kGeneral;
+  if (type & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+    ty = ErrorType::kPerformance;
+  } else if (type & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
+    ty = ErrorType::kValidation;
+  }
 
-    std::stringstream msg_buf;
-    msg_buf << "Err: " << data->pMessage << std::endl;
-    if (data->pMessageIdName) {
-      msg_buf << "MessageId (" << data->messageIdNumber << "): "
-              << data->pMessageIdName << std::endl;
-    }
-    if (data->queueLabelCount > 0) {
-      msg_buf << "Queues:" << std::endl;
+  std::stringstream msg_buf;
+  msg_buf << "Err: " << data->pMessage << std::endl;
+  if (data->pMessageIdName) {
+    msg_buf << "MessageId (" << data->messageIdNumber
+            << "): " << data->pMessageIdName << std::endl;
+  }
+  if (data->queueLabelCount > 0) {
+    msg_buf << "Queues:" << std::endl;
 
-      std::ranges::for_each(
-          {data->pQueueLabels, data->queueLabelCount}, [&msg_buf](const auto& label) {
-        msg_buf << "  " << label.pLabelName << std::endl;
-      });
-    }
-    if (data->cmdBufLabelCount > 0) {
-      msg_buf << "Command Buffers:" << std::endl;
+    std::ranges::for_each({data->pQueueLabels, data->queueLabelCount},
+                          [&msg_buf](const auto& label) {
+                            msg_buf << "  " << label.pLabelName << std::endl;
+                          });
+  }
+  if (data->cmdBufLabelCount > 0) {
+    msg_buf << "Command Buffers:" << std::endl;
 
-      std::ranges::for_each({data->pCmdBufLabels, data->cmdBufLabelCount}, [&msg_buf](const auto& buf) {
-        msg_buf << "  " << buf.pLabelName << std::endl;
-      });
-    }
-    if (data->objectCount > 0) {
-      msg_buf << "Objects:" << std::endl;
+    std::ranges::for_each({data->pCmdBufLabels, data->cmdBufLabelCount},
+                          [&msg_buf](const auto& buf) {
+                            msg_buf << "  " << buf.pLabelName << std::endl;
+                          });
+  }
+  if (data->objectCount > 0) {
+    msg_buf << "Objects:" << std::endl;
 
-      std::ranges::for_each({data->pObjects, data->objectCount}, [&msg_buf](const auto& obj) {
-        msg_buf << "  " << objectTypeToName(obj.objectType);
-        msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
-        if (obj.pObjectName) {
-          msg_buf << " " << obj.pObjectName;
-        }
-        msg_buf << std::endl;
-      });
-    }
+    std::ranges::for_each(
+        {data->pObjects, data->objectCount}, [&msg_buf](const auto& obj) {
+          msg_buf << "  " << objectTypeToName(obj.objectType);
+          msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
+          if (obj.pObjectName) {
+            msg_buf << " " << obj.pObjectName;
+          }
+          msg_buf << std::endl;
+        });
+  }
 
-    std::cout << "msg: " << msg_buf.str() << std::endl;
-    // err_data->cb({
-    //   .severity = sev,
-    //   .type = ty,
-    //   .message = msg_buf.str().c_str(),
-    //   .data = err_data->user_data
-    // });
+  std::cout << "msg: " << msg_buf.str() << std::endl;
+  // err_data->cb({
+  //   .severity = sev,
+  //   .type = ty,
+  //   .message = msg_buf.str().c_str(),
+  //   .data = err_data->user_data
+  // });
   //}
   return VK_FALSE;
 }
@@ -207,14 +207,17 @@ DeviceBuilder& DeviceBuilder::app_name(std::string_view app_name) {
   return *this;
 }
 
-DeviceBuilder& DeviceBuilder::app_version(uint32_t major, uint32_t minor, uint32_t patch) {
+DeviceBuilder& DeviceBuilder::app_version(uint32_t major,
+                                          uint32_t minor,
+                                          uint32_t patch) {
   version_.major = major;
   version_.minor = minor;
   version_.patch = patch;
   return *this;
 }
 
-DeviceBuilder& DeviceBuilder::device_extensions(const std::vector<const char*> exts) {
+DeviceBuilder& DeviceBuilder::device_extensions(
+    const std::vector<const char*> exts) {
   device_extensions_ = exts;
   return *this;
 }
@@ -246,24 +249,25 @@ void DeviceBuilder::check_validation_available_if_needed() {
 
 VkApplicationInfo DeviceBuilder::build_app_info() {
   return {
-    .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-    .pApplicationName = app_name_.data(),
-    .applicationVersion =
-        TO_VK_VERSION(0, version_.major, version_.minor, version_.patch),
-    .pEngineName = kEngineName,
-    .engineVersion = TO_VK_VERSION(0, kEngineMajor, kEngineMinor, kEnginePatch),
-    .apiVersion = TO_VK_VERSION(0, 1, 2, 0),
+      .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+      .pApplicationName = app_name_.data(),
+      .applicationVersion =
+          TO_VK_VERSION(0, version_.major, version_.minor, version_.patch),
+      .pEngineName = kEngineName,
+      .engineVersion =
+          TO_VK_VERSION(0, kEngineMajor, kEngineMinor, kEnginePatch),
+      .apiVersion = TO_VK_VERSION(0, 1, 2, 0),
   };
 }
 
 VkInstanceCreateInfo DeviceBuilder::build_instance_create_info(
     VkApplicationInfo* app_info) {
   return {
-    .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-    .pApplicationInfo = app_info,
-    .enabledLayerCount = 0,
-    .enabledExtensionCount = uint32_t(device_extensions_.size()),
-    .ppEnabledExtensionNames = device_extensions_.data(),
+      .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+      .pApplicationInfo = app_info,
+      .enabledLayerCount = 0,
+      .enabledExtensionCount = uint32_t(device_extensions_.size()),
+      .ppEnabledExtensionNames = device_extensions_.data(),
   };
 }
 
@@ -272,18 +276,19 @@ VkDebugUtilsMessengerCreateInfoEXT DeviceBuilder::build_debug_create_info() {
     return {};
 
   return {
-    .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-    .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                       VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-    .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                   VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                   VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-    .pfnUserCallback = debug_callback,
-    //.pUserData = error_data_,
+      .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+      .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+      .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                     VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+      .pfnUserCallback = debug_callback,
+      //.pUserData = error_data_,
   };
 }
 
-void DeviceBuilder::setup_debug_handler_if_needed(Device* d,
+void DeviceBuilder::setup_debug_handler_if_needed(
+    Device* d,
     VkDebugUtilsMessengerCreateInfoEXT* debug_create_info) {
   if (!enable_validation_)
     return;
@@ -341,7 +346,7 @@ std::unique_ptr<Device> DeviceBuilder::build() {
 
   // Using new because of private constructor.
   auto ptr = std::unique_ptr<Device>(new Device());
-  Device *d = ptr.get();
+  Device* d = ptr.get();
 
   auto res = vkCreateInstance(&instance_create_info, nullptr, &d->instance_);
   if (res != VK_SUCCESS)
