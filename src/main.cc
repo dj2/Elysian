@@ -2,7 +2,7 @@
 
 #include "src/engine.h"
 
-int main() {
+auto main() -> int {
 
   el::engine::DeviceBuilder builder;
   auto device = builder.app_name("Elysian")

@@ -12,21 +12,21 @@ namespace engine {
 namespace {
 
 #define TO_VK_VERSION(variant, major, minor,patch) \
-  ((variant) << 29) | ((major) << 22) | ((minor) << 12) | ((patch))
+  (((variant) << 29) | ((major) << 22) | ((minor) << 12) | ((patch)))
 
-#define ARRAY_SIZE(ary) sizeof(ary) / sizeof(ary[0])
+#define ARRAY_SIZE(ary) (sizeof(ary) / sizeof((ary)[0]))
 
 const char* kEngineName = "Elysian Engine";
 constexpr uint8_t kEngineMajor = 0;
 constexpr uint8_t kEngineMinor = 1;
 constexpr uint8_t kEnginePatch = 0;
 
-const char* kValidationLayers[] = {
-  "VK_LAYER_KHRONOS_validation"
+std::array<const char*, 1> kValidationLayers = {
+  {"VK_LAYER_KHRONOS_validation"}
 };
 uint32_t kValidationLayerCount = ARRAY_SIZE(kValidationLayers);
 
-const char* objectTypeToName(VkObjectType type) {
+auto objectTypeToName(VkObjectType type) -> std::string_view {
   switch(type) {
     case VK_OBJECT_TYPE_INSTANCE:
       return "instance";
@@ -118,11 +118,11 @@ const char* objectTypeToName(VkObjectType type) {
   return "unknown";
 }
 
-VkBool32 debug_callback(
+auto debug_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity,
     VkDebugUtilsMessageTypeFlagsEXT type,
     const VkDebugUtilsMessengerCallbackDataEXT* data,
-    void* /*user_data*/) {
+    void* /*user_data*/) -> VkBool32 {
   // ErrorData* err_data = static_cast<ErrorData*>(user_data);
 
   // if (err_data && err_data->cb) {
@@ -335,7 +335,7 @@ std::unique_ptr<Device> DeviceBuilder::build() {
 
   if (enable_validation_) {
     instance_create_info.enabledLayerCount = kValidationLayerCount;
-    instance_create_info.ppEnabledLayerNames = kValidationLayers;
+    instance_create_info.ppEnabledLayerNames = kValidationLayers.data();
     instance_create_info.pNext = &debug_create_info;
   }
 

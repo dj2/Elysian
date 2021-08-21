@@ -1,4 +1,7 @@
 CC=clang++
+TIDY=clang-tidy
+FMT=clang-format
+
 CFLAGS=\
 	-std=c++20 \
 	-stdlib=libc++ \
@@ -21,7 +24,15 @@ HDRS=\
 
 O_FILES=$(patsubst %.cc,%.o,$(SRCS))
 
+.PHONY: all tidy fmt clean
+
 all: elysian
+
+tidy: $(HDRS) $(SRCS)
+	$(TIDY) $(HDRS) $(SRCS) -- $(CFLAGS)
+
+fmt: $(HDRS) $(SRCS)
+	$(FMT) -i $(HDRS) $(SRCS) -- $(CFLAGS)
 
 %.o: %.cc %.h
 	$(CC) $(CFLAGS) $< -c -o $@
