@@ -10,18 +10,6 @@
 namespace el::engine {
 namespace {
 
-// Shift values for creating a Vulkan Version.
-constexpr auto kVkVariantShift = 29;
-constexpr auto kVkMajorShift = 22;
-constexpr auto kVkMinorShift = 12;
-constexpr auto TO_VK_VERSION(uint32_t variant,
-                             uint32_t major,
-                             uint32_t minor,
-                             uint32_t patch) {
-  return variant << kVkVariantShift | major << kVkMajorShift |
-          minor << kVkMinorShift | patch;
-}
-
 const char* const kEngineName = "Elysian Engine";
 constexpr uint8_t kEngineMajor = 0;
 constexpr uint8_t kEngineMinor = 1;
@@ -193,44 +181,38 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
   return VK_FALSE;
 }
 
+auto build_app_info(const DeviceConfig& config) -> VkApplicationInfo {
+  return {
+      .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+      .pApplicationName = config.app_name().data(),
+      .applicationVersion = config.version().to_vk(),
+      .pEngineName = kEngineName,
+      .engineVersion =
+          VersionInfo{0, kEngineMajor, kEngineMinor, kEnginePatch}.to_vk(),
+      .apiVersion = VersionInfo{0, 1, 2, 0}.to_vk(),
+  };
+}
+
+auto build_instance_create_info(VkApplicationInfo* app_info,
+                                const std::vector<const char*>& exts)
+    -> VkInstanceCreateInfo {
+  return {
+      .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+      .pApplicationInfo = app_info,
+      .enabledLayerCount = 0,
+      .enabledExtensionCount = uint32_t(exts.size()),
+      .ppEnabledExtensionNames = exts.data(),
+  };
+}
+
 }  // namespace
 
-Device::Device() = default;
-
-DeviceBuilder::DeviceBuilder() = default;
-
-DeviceBuilder::~DeviceBuilder() = default;
-
-auto DeviceBuilder::enable_validation() -> DeviceBuilder& {
-  enable_validation_ = true;
-  return *this;
+Device::Device(const DeviceConfig& config)
+    : enable_validation_(config.enable_validation()) {
+  build_instance(config);
 }
 
-auto DeviceBuilder::app_name(std::string_view app_name) -> DeviceBuilder& {
-  app_name_ = app_name;
-  return *this;
-}
-
-auto DeviceBuilder::app_version(uint32_t major, uint32_t minor, uint32_t patch)
-    -> DeviceBuilder& {
-  version_.major = major;
-  version_.minor = minor;
-  version_.patch = patch;
-  return *this;
-}
-
-auto DeviceBuilder::device_extensions(const std::vector<const char*>& exts)
-    -> DeviceBuilder& {
-  device_extensions_ = exts;
-  return *this;
-}
-
-// auto DeviceBuilder::error_callback(ErrorData* data) -> DeviceBuilder& {
-//   error_data_ = data;
-//   return *this;
-// }
-
-void DeviceBuilder::check_validation_available_if_needed() const {
+void Device::check_validation_available_if_needed() const {
   if (!enable_validation_) {
     return;
   }
@@ -252,31 +234,7 @@ void DeviceBuilder::check_validation_available_if_needed() const {
   }
 }
 
-auto DeviceBuilder::build_app_info() -> VkApplicationInfo {
-  return {
-      .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-      .pApplicationName = app_name_.data(),
-      .applicationVersion =
-          TO_VK_VERSION(0, version_.major, version_.minor, version_.patch),
-      .pEngineName = kEngineName,
-      .engineVersion =
-          TO_VK_VERSION(0, kEngineMajor, kEngineMinor, kEnginePatch),
-      .apiVersion = TO_VK_VERSION(0, 1, 2, 0),
-  };
-}
-
-auto DeviceBuilder::build_instance_create_info(VkApplicationInfo* app_info)
-    -> VkInstanceCreateInfo {
-  return {
-      .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-      .pApplicationInfo = app_info,
-      .enabledLayerCount = 0,
-      .enabledExtensionCount = uint32_t(device_extensions_.size()),
-      .ppEnabledExtensionNames = device_extensions_.data(),
-  };
-}
-
-auto DeviceBuilder::build_debug_create_info() const
+auto Device::build_debug_create_info() const
     -> VkDebugUtilsMessengerCreateInfoEXT {
   if (!enable_validation_) {
     return {};
@@ -294,21 +252,20 @@ auto DeviceBuilder::build_debug_create_info() const
   };
 }
 
-void DeviceBuilder::setup_debug_handler_if_needed(
-    Device* d,
-    VkDebugUtilsMessengerCreateInfoEXT* debug_create_info) const {
+void Device::setup_debug_handler_if_needed(
+    VkDebugUtilsMessengerCreateInfoEXT* debug_create_info) {
   if (!enable_validation_) {
     return;
   }
 
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
   auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-      vkGetInstanceProcAddr(d->instance_, "vkCreateDebugUtilsMessengerEXT"));
+      vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT"));
   if (func == nullptr) {
     throw std::runtime_error("DebugUtilsMessengerEXT not available");
   }
 
-  auto res = func(d->instance_, debug_create_info, nullptr, &d->debug_handler_);
+  auto res = func(instance_, debug_create_info, nullptr, &debug_handler_);
   if (res != VK_SUCCESS) {
     throw std::runtime_error("Failed to create debug handler");
   }
@@ -318,16 +275,15 @@ static auto is_device_suitable(VkPhysicalDevice /* unused */) -> bool {
   return true;
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-void DeviceBuilder::pick_physical_device(Device* d) {
+void Device::pick_physical_device() {
   uint32_t count = 0;
-  vkEnumeratePhysicalDevices(d->instance_, &count, nullptr);
+  vkEnumeratePhysicalDevices(instance_, &count, nullptr);
   if (count == 0) {
     throw std::runtime_error("No supported GPUs found");
   }
 
   std::vector<VkPhysicalDevice> devices(count);
-  vkEnumeratePhysicalDevices(d->instance_, &count, devices.data());
+  vkEnumeratePhysicalDevices(instance_, &count, devices.data());
 
   auto is_suitable = [&](const auto& device) {
     return is_device_suitable(device);
@@ -337,18 +293,19 @@ void DeviceBuilder::pick_physical_device(Device* d) {
     throw std::runtime_error("No suitable GPUs found");
   }
 
-  d->physical_device_.device = *it;
+  physical_device_.device = *it;
 }
 
-auto DeviceBuilder::build() -> std::unique_ptr<Device> {
+void Device::build_instance(const DeviceConfig& config) {
   check_validation_available_if_needed();
 
+  auto exts = config.device_extensions();
   if (enable_validation_) {
-    device_extensions_.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
 
-  auto app_info = build_app_info();
-  auto instance_create_info = build_instance_create_info(&app_info);
+  auto app_info = build_app_info(config);
+  auto instance_create_info = build_instance_create_info(&app_info, exts);
   auto debug_create_info = build_debug_create_info();
 
   if (enable_validation_) {
@@ -357,19 +314,13 @@ auto DeviceBuilder::build() -> std::unique_ptr<Device> {
     instance_create_info.pNext = &debug_create_info;
   }
 
-  // Using new because of private constructor.
-  auto ptr = std::unique_ptr<Device>(new Device());
-  Device* d = ptr.get();
-
-  auto res = vkCreateInstance(&instance_create_info, nullptr, &d->instance_);
+  auto res = vkCreateInstance(&instance_create_info, nullptr, &instance_);
   if (res != VK_SUCCESS) {
     throw std::runtime_error("Failed to create vulkan instance");
   }
 
-  setup_debug_handler_if_needed(d, &debug_create_info);
-  pick_physical_device(d);
-
-  return ptr;
+  setup_debug_handler_if_needed(&debug_create_info);
+  pick_physical_device();
 }
 
 }  // namespace el::engine
