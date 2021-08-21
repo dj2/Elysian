@@ -1,9 +1,11 @@
 FormatStyle: file
 Checks: "\
   -*,\
+  abseil-*,\
   bugprone-*,\
   cert-*,\
   clang-analyzer-*,\
+  clang-diagnostic-*,\
   concurrency-*,\
   google-*,\
   misc-*,\
@@ -12,4 +14,4 @@ Checks: "\
   portability-*,\
   readability-*,\
 "
-HeaderFilterRegex: 'src/*\.h$'
+WarningsAsErrors: '*'

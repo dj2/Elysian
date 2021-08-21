@@ -29,7 +29,7 @@ O_FILES=$(patsubst %.cc,%.o,$(SRCS))
 all: elysian
 
 tidy: $(HDRS) $(SRCS)
-	$(TIDY) $(HDRS) $(SRCS) -- $(CFLAGS)
+	$(TIDY) -header-filter=src/.* $(SRCS) -- -x c++ $(CFLAGS)
 
 fmt: $(HDRS) $(SRCS)
 	$(FMT) -i $(HDRS) $(SRCS)

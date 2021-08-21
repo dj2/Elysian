@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #pragma clang diagnostic push
@@ -11,8 +12,7 @@
 
 #include "src/pad.h"
 
-namespace el {
-namespace engine {
+namespace el::engine {
 
 enum class ErrorSeverity {
   kVerbose,
@@ -37,7 +37,7 @@ struct PhysicalDevice {
 
 class Device {
  public:
-  ~Device();
+  ~Device() = default;
 
  private:
   friend class DeviceBuilder;
@@ -56,15 +56,30 @@ class DeviceBuilder {
   DeviceBuilder();
   ~DeviceBuilder();
 
-  DeviceBuilder& enable_validation();
-  DeviceBuilder& app_name(std::string_view app_name);
-  DeviceBuilder& app_version(uint32_t major, uint32_t minor, uint32_t patch);
-  DeviceBuilder& device_extensions(std::vector<const char*> exts);
-  // DeviceBuilder& error_callback(ErrorData* data);
+  auto enable_validation() -> DeviceBuilder&;
+  auto app_name(std::string_view app_name) -> DeviceBuilder&;
+  auto app_version(uint32_t major, uint32_t minor, uint32_t patch)
+      -> DeviceBuilder&;
+  auto device_extensions(const std::vector<const char*>& exts)
+      -> DeviceBuilder&;
+  // auto error_callback(ErrorData* data) -> DeviceBuilder&;
 
-  std::unique_ptr<Device> build();
+  auto build() -> std::unique_ptr<Device>;
 
- protected:
+ private:
+  // [[nodiscard]] auto is_device_suitable(VkPhysicalDevice device) const ->
+  // bool;
+  void check_validation_available_if_needed() const;
+  auto build_app_info() -> VkApplicationInfo;
+  auto build_instance_create_info(VkApplicationInfo* app_info)
+      -> VkInstanceCreateInfo;
+  [[nodiscard]] auto build_debug_create_info() const
+      -> VkDebugUtilsMessengerCreateInfoEXT;
+  void setup_debug_handler_if_needed(
+      Device* d,
+      VkDebugUtilsMessengerCreateInfoEXT* debug_create_info) const;
+  void pick_physical_device(Device* d);
+
   std::string_view app_name_;
   // ErrorData* error_data_ = nullptr;
   std::vector<const char*> device_extensions_;
@@ -76,18 +91,6 @@ class DeviceBuilder {
 
   bool enable_validation_ = false;
   EL_PAD(3);
-
- private:
-  [[nodiscard]] bool is_device_suitable(VkPhysicalDevice);
-  void check_validation_available_if_needed();
-  VkApplicationInfo build_app_info();
-  VkInstanceCreateInfo build_instance_create_info(VkApplicationInfo* app_info);
-  VkDebugUtilsMessengerCreateInfoEXT build_debug_create_info();
-  void setup_debug_handler_if_needed(
-      Device* d,
-      VkDebugUtilsMessengerCreateInfoEXT* debug_create_info);
-  void pick_physical_device(Device* d);
 };
 
-}  // namespace engine
-}  // namespace el
+}  // namespace el::engine

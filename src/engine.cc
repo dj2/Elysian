@@ -7,8 +7,7 @@
 
 #include "src/engine.h"
 
-namespace el {
-namespace engine {
+namespace el::engine {
 namespace {
 
 #define TO_VK_VERSION(variant, major, minor, patch) \
@@ -125,24 +124,25 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 
   // if (err_data && err_data->cb) {
   ErrorSeverity sev = ErrorSeverity::kError;
-  if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+  if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
     sev = ErrorSeverity::kWarning;
-  } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+  } else if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
     sev = ErrorSeverity::kInfo;
-  } else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
+  } else if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) !=
+             0) {
     sev = ErrorSeverity::kVerbose;
   }
 
   ErrorType ty = ErrorType::kGeneral;
-  if (type & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+  if ((type & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0) {
     ty = ErrorType::kPerformance;
-  } else if (type & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
+  } else if ((type & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0) {
     ty = ErrorType::kValidation;
   }
 
   std::stringstream msg_buf;
   msg_buf << "Err: " << data->pMessage << std::endl;
-  if (data->pMessageIdName) {
+  if (data->pMessageIdName != nullptr) {
     msg_buf << "MessageId (" << data->messageIdNumber
             << "): " << data->pMessageIdName << std::endl;
   }
@@ -191,45 +191,43 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 
 Device::Device() = default;
 
-Device::~Device() = default;
-
 DeviceBuilder::DeviceBuilder() = default;
 
 DeviceBuilder::~DeviceBuilder() = default;
 
-DeviceBuilder& DeviceBuilder::enable_validation() {
+auto DeviceBuilder::enable_validation() -> DeviceBuilder& {
   enable_validation_ = true;
   return *this;
 }
 
-DeviceBuilder& DeviceBuilder::app_name(std::string_view app_name) {
+auto DeviceBuilder::app_name(std::string_view app_name) -> DeviceBuilder& {
   app_name_ = app_name;
   return *this;
 }
 
-DeviceBuilder& DeviceBuilder::app_version(uint32_t major,
-                                          uint32_t minor,
-                                          uint32_t patch) {
+auto DeviceBuilder::app_version(uint32_t major, uint32_t minor, uint32_t patch)
+    -> DeviceBuilder& {
   version_.major = major;
   version_.minor = minor;
   version_.patch = patch;
   return *this;
 }
 
-DeviceBuilder& DeviceBuilder::device_extensions(
-    const std::vector<const char*> exts) {
+auto DeviceBuilder::device_extensions(const std::vector<const char*>& exts)
+    -> DeviceBuilder& {
   device_extensions_ = exts;
   return *this;
 }
 
-// DeviceBuilder& DeviceBuilder::error_callback(ErrorData* data) {
+// auto DeviceBuilder::error_callback(ErrorData* data) -> DeviceBuilder& {
 //   error_data_ = data;
 //   return *this;
 // }
 
-void DeviceBuilder::check_validation_available_if_needed() {
-  if (!enable_validation_)
+void DeviceBuilder::check_validation_available_if_needed() const {
+  if (!enable_validation_) {
     return;
+  }
 
   uint32_t layer_count = 0;
   vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -243,11 +241,12 @@ void DeviceBuilder::check_validation_available_if_needed() {
     });
   };
 
-  if (!std::ranges::all_of(kValidationLayers, has_layer))
+  if (!std::ranges::all_of(kValidationLayers, has_layer)) {
     throw std::runtime_error("Validation layer not available");
+  }
 }
 
-VkApplicationInfo DeviceBuilder::build_app_info() {
+auto DeviceBuilder::build_app_info() -> VkApplicationInfo {
   return {
       .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
       .pApplicationName = app_name_.data(),
@@ -260,8 +259,8 @@ VkApplicationInfo DeviceBuilder::build_app_info() {
   };
 }
 
-VkInstanceCreateInfo DeviceBuilder::build_instance_create_info(
-    VkApplicationInfo* app_info) {
+auto DeviceBuilder::build_instance_create_info(VkApplicationInfo* app_info)
+    -> VkInstanceCreateInfo {
   return {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
       .pApplicationInfo = app_info,
@@ -271,9 +270,11 @@ VkInstanceCreateInfo DeviceBuilder::build_instance_create_info(
   };
 }
 
-VkDebugUtilsMessengerCreateInfoEXT DeviceBuilder::build_debug_create_info() {
-  if (!enable_validation_)
+auto DeviceBuilder::build_debug_create_info() const
+    -> VkDebugUtilsMessengerCreateInfoEXT {
+  if (!enable_validation_) {
     return {};
+  }
 
   return {
       .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -289,31 +290,34 @@ VkDebugUtilsMessengerCreateInfoEXT DeviceBuilder::build_debug_create_info() {
 
 void DeviceBuilder::setup_debug_handler_if_needed(
     Device* d,
-    VkDebugUtilsMessengerCreateInfoEXT* debug_create_info) {
-  if (!enable_validation_)
+    VkDebugUtilsMessengerCreateInfoEXT* debug_create_info) const {
+  if (!enable_validation_) {
     return;
+  }
 
   auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
       vkGetInstanceProcAddr(d->instance_, "vkCreateDebugUtilsMessengerEXT"));
-  if (func == nullptr)
+  if (func == nullptr) {
     throw std::runtime_error("DebugUtilsMessengerEXT not available");
+  }
 
   auto res = func(d->instance_, debug_create_info, nullptr, &d->debug_handler_);
-  if (res != VK_SUCCESS)
+  if (res != VK_SUCCESS) {
     throw std::runtime_error("Failed to create debug handler");
-
-  return;
+  }
 }
 
-bool DeviceBuilder::is_device_suitable(VkPhysicalDevice) {
+static auto is_device_suitable(VkPhysicalDevice /* unused */) -> bool {
   return true;
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void DeviceBuilder::pick_physical_device(Device* d) {
   uint32_t count = 0;
   vkEnumeratePhysicalDevices(d->instance_, &count, nullptr);
-  if (count == 0)
+  if (count == 0) {
     throw std::runtime_error("No supported GPUs found");
+  }
 
   std::vector<VkPhysicalDevice> devices(count);
   vkEnumeratePhysicalDevices(d->instance_, &count, devices.data());
@@ -322,17 +326,19 @@ void DeviceBuilder::pick_physical_device(Device* d) {
     return is_device_suitable(device);
   };
   auto it = std::ranges::find_if(devices, is_suitable);
-  if (it == devices.end())
+  if (it == devices.end()) {
     throw std::runtime_error("No suitable GPUs found");
+  }
 
   d->physical_device_.device = *it;
 }
 
-std::unique_ptr<Device> DeviceBuilder::build() {
+auto DeviceBuilder::build() -> std::unique_ptr<Device> {
   check_validation_available_if_needed();
 
-  if (enable_validation_)
+  if (enable_validation_) {
     device_extensions_.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  }
 
   auto app_info = build_app_info();
   auto instance_create_info = build_instance_create_info(&app_info);
@@ -349,8 +355,9 @@ std::unique_ptr<Device> DeviceBuilder::build() {
   Device* d = ptr.get();
 
   auto res = vkCreateInstance(&instance_create_info, nullptr, &d->instance_);
-  if (res != VK_SUCCESS)
+  if (res != VK_SUCCESS) {
     throw std::runtime_error("Failed to create vulkan instance");
+  }
 
   setup_debug_handler_if_needed(d, &debug_create_info);
   pick_physical_device(d);
@@ -358,5 +365,4 @@ std::unique_ptr<Device> DeviceBuilder::build() {
   return ptr;
 }
 
-}  // namespace engine
-}  // namespace el
+}  // namespace el::engine
