@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 
@@ -149,27 +150,30 @@ VkBool32 debug_callback(
     }
     if (data->queueLabelCount > 0) {
       msg_buf << "Queues:" << std::endl;
-      for (size_t i = 0; i < data->queueLabelCount; ++i) {
-        msg_buf << "  " << data->pQueueLabels[i].pLabelName << std::endl;
-      }
+
+      std::ranges::for_each(
+          {data->pQueueLabels, data->queueLabelCount}, [&msg_buf](const auto& label) {
+        msg_buf << "  " << label.pLabelName << std::endl;
+      });
     }
     if (data->cmdBufLabelCount > 0) {
       msg_buf << "Command Buffers:" << std::endl;
-      for (size_t i = 0; i < data->cmdBufLabelCount; ++i) {
-        msg_buf << "  " << data->pCmdBufLabels[i].pLabelName << std::endl;
-      }
+
+      std::ranges::for_each({data->pCmdBufLabels, data->cmdBufLabelCount}, [&msg_buf](const auto& buf) {
+        msg_buf << "  " << buf.pLabelName << std::endl;
+      });
     }
     if (data->objectCount > 0) {
       msg_buf << "Objects:" << std::endl;
-      for (size_t i = 0; i < data->objectCount; ++i) {
-        auto& obj = data->pObjects[i];
+
+      std::ranges::for_each({data->pObjects, data->objectCount}, [&msg_buf](const auto& obj) {
         msg_buf << "  " << objectTypeToName(obj.objectType);
         msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
         if (obj.pObjectName) {
           msg_buf << " " << obj.pObjectName;
         }
         msg_buf << std::endl;
-      }
+      });
     }
 
     std::cout << "msg: " << msg_buf.str() << std::endl;
@@ -308,16 +312,15 @@ void DeviceBuilder::pick_physical_device(Device* d) {
 
   std::vector<VkPhysicalDevice> devices(count);
   vkEnumeratePhysicalDevices(d->instance_, &count, devices.data());
-  for (const auto& device : devices) {
-    if (is_device_suitable(device)) {
-      d->physical_device_.device = device;
-      break;
-    }
-  }
-  if (d->physical_device_.device == VK_NULL_HANDLE)
+
+  auto is_suitable = [&](const auto& device) {
+    return is_device_suitable(device);
+  };
+  auto it = std::ranges::find_if(devices, is_suitable);
+  if (it == devices.end())
     throw std::runtime_error("No suitable GPUs found");
 
-  return;
+  d->physical_device_.device = *it;
 }
 
 std::unique_ptr<Device> DeviceBuilder::build() {
