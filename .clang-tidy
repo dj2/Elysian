@@ -5,9 +5,11 @@ Checks: "\
   bugprone-*,\
   cert-*,\
   clang-analyzer-*,\
-  clang-diagnostic-*,\
   concurrency-*,\
+  cppcoreguidelines-*,\
   google-*,\
+  llvm-*,\
+  -llvm-header-guard,\
   misc-*,\
   modernize-*,\
   performance-*,\

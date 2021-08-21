@@ -10,19 +10,25 @@
 namespace el::engine {
 namespace {
 
-#define TO_VK_VERSION(variant, major, minor, patch) \
-  (((variant) << 29) | ((major) << 22) | ((minor) << 12) | ((patch)))
+// Shift values for creating a Vulkan Version.
+constexpr auto kVkVariantShift = 29;
+constexpr auto kVkMajorShift = 22;
+constexpr auto kVkMinorShift = 12;
+constexpr auto TO_VK_VERSION(uint32_t variant,
+                             uint32_t major,
+                             uint32_t minor,
+                             uint32_t patch) {
+  return variant << kVkVariantShift | major << kVkMajorShift |
+          minor << kVkMinorShift | patch;
+}
 
-#define ARRAY_SIZE(ary) (sizeof(ary) / sizeof((ary)[0]))
-
-const char* kEngineName = "Elysian Engine";
+const char* const kEngineName = "Elysian Engine";
 constexpr uint8_t kEngineMajor = 0;
 constexpr uint8_t kEngineMinor = 1;
 constexpr uint8_t kEnginePatch = 0;
 
-std::array<const char*, 1> kValidationLayers = {
+constexpr std::array<const char*, 1> kValidationLayers = {
     {"VK_LAYER_KHRONOS_validation"}};
-uint32_t kValidationLayerCount = ARRAY_SIZE(kValidationLayers);
 
 auto objectTypeToName(VkObjectType type) -> std::string_view {
   switch (type) {
@@ -295,6 +301,7 @@ void DeviceBuilder::setup_debug_handler_if_needed(
     return;
   }
 
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
   auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
       vkGetInstanceProcAddr(d->instance_, "vkCreateDebugUtilsMessengerEXT"));
   if (func == nullptr) {
@@ -345,7 +352,7 @@ auto DeviceBuilder::build() -> std::unique_ptr<Device> {
   auto debug_create_info = build_debug_create_info();
 
   if (enable_validation_) {
-    instance_create_info.enabledLayerCount = kValidationLayerCount;
+    instance_create_info.enabledLayerCount = kValidationLayers.size();
     instance_create_info.ppEnabledLayerNames = kValidationLayers.data();
     instance_create_info.pNext = &debug_create_info;
   }

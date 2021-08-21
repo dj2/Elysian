@@ -29,10 +29,10 @@ enum class ErrorType {
 
 struct PhysicalDevice {
   VkPhysicalDevice device = VK_NULL_HANDLE;
-  VkPhysicalDeviceFeatures features;
+  VkPhysicalDeviceFeatures features = {};
   EL_PAD(4);
-  VkPhysicalDeviceProperties properties;
-  VkPhysicalDeviceMemoryProperties memory_properties;
+  VkPhysicalDeviceProperties properties = {};
+  VkPhysicalDeviceMemoryProperties memory_properties = {};
 };
 
 class Device {
@@ -44,11 +44,11 @@ class Device {
 
   Device();
 
-  VkDebugUtilsMessengerEXT debug_handler_;
+  VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
 
-  PhysicalDevice physical_device_;
+  PhysicalDevice physical_device_ = {};
 
-  VkInstance instance_;
+  VkInstance instance_ = {};
 };
 
 class DeviceBuilder {
