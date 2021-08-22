@@ -1,14 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpadded"
 #include <vulkan/vulkan.h>
-#pragma clang diagnostic pop
+#pragma GCC diagnostic pop
 
 #include "src/pad.h"
 
@@ -30,6 +31,19 @@ enum class ErrorType {
   kGeneral,
   kValidation,
   kPerformance,
+};
+
+struct Error {
+  ErrorSeverity severity;
+  ErrorType type;
+  void* data;
+  std::string_view message;
+};
+
+using ErrorCallback = std::function<void(const Error& data)>;
+struct ErrorData {
+  ErrorCallback cb;
+  void* user_data = nullptr;
 };
 
 struct PhysicalDevice {
@@ -75,10 +89,11 @@ class DeviceConfig {
     device_extensions_ = exts;
     return *this;
   }
-  // auto error_callback(ErrorData* data) -> DeviceConfig& {
-  //   error_data_ = data;
-  //   return *this;
-  // }
+
+  auto set_error_data(ErrorData* data) -> DeviceConfig& {
+    error_data_ = data;
+    return *this;
+  }
 
   [[nodiscard]] auto enable_validation() const -> bool {
     return enable_validation_;
@@ -88,15 +103,16 @@ class DeviceConfig {
     return device_extensions_;
   }
   [[nodiscard]] auto version() const -> VersionInfo { return version_; }
+  [[nodiscard]] auto error_data() const -> ErrorData* { return error_data_; }
 
  private:
   std::string_view app_name_;
-  // ErrorData* error_data_ = nullptr;
-  std::vector<const char*> device_extensions_;
-  VersionInfo version_;
+  ErrorData* error_data_ = nullptr;
+  std::vector<const char*> device_extensions_ = {};
+  VersionInfo version_ = {};
 
   bool enable_validation_ = false;
-  EL_PAD(3);
+  EL_PAD(7);
 };
 
 class Device {
@@ -107,7 +123,7 @@ class Device {
   // [[nodiscard]] auto is_device_suitable(VkPhysicalDevice device) const ->
   // bool;
   void check_validation_available_if_needed() const;
-  [[nodiscard]] auto build_debug_create_info() const
+  [[nodiscard]] auto build_debug_create_info(const DeviceConfig& config) const
       -> VkDebugUtilsMessengerCreateInfoEXT;
   void setup_debug_handler_if_needed(
       VkDebugUtilsMessengerCreateInfoEXT* debug_create_info);
@@ -116,10 +132,12 @@ class Device {
 
   VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
 
-  PhysicalDevice physical_device_;
+  PhysicalDevice physical_device_ = {};
 
   VkInstance instance_ = {};
-  bool enable_validation_;
+  bool enable_validation_ = false;
+
+  EL_PAD(7);
 };
 
 }  // namespace el::engine

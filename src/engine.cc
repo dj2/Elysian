@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <ranges>
 #include <span>
 #include <sstream>
 #include <stdexcept>
@@ -113,77 +114,77 @@ auto objectTypeToName(VkObjectType type) -> std::string_view {
 auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
                     VkDebugUtilsMessageTypeFlagsEXT type,
                     const VkDebugUtilsMessengerCallbackDataEXT* data,
-                    void* /*user_data*/) -> VkBool32 {
-  // ErrorData* err_data = static_cast<ErrorData*>(user_data);
+                    void* user_data) -> VkBool32 {
+  const auto* err_data = static_cast<ErrorData*>(user_data);
 
-  // if (err_data && err_data->cb) {
-  ErrorSeverity sev = ErrorSeverity::kError;
-  if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
-    sev = ErrorSeverity::kWarning;
-  } else if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
-    sev = ErrorSeverity::kInfo;
-  } else if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) !=
-             0) {
-    sev = ErrorSeverity::kVerbose;
+  if (err_data != nullptr && err_data->cb) {
+    ErrorSeverity sev = ErrorSeverity::kError;
+    if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
+      sev = ErrorSeverity::kWarning;
+    } else if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
+      sev = ErrorSeverity::kInfo;
+    } else if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) !=
+               0) {
+      sev = ErrorSeverity::kVerbose;
+    }
+
+    ErrorType error_type = ErrorType::kGeneral;
+    if ((type & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0) {
+      error_type = ErrorType::kPerformance;
+    } else if ((type & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0) {
+      error_type = ErrorType::kValidation;
+    }
+
+    std::stringstream msg_buf;
+    msg_buf << "Err: " << data->pMessage << std::endl;
+    if (data->pMessageIdName != nullptr) {
+      msg_buf << "MessageId (" << data->messageIdNumber
+              << "): " << data->pMessageIdName << std::endl;
+    }
+    if (data->queueLabelCount > 0) {
+      msg_buf << "Queues:" << std::endl;
+
+      std::span queues(data->pQueueLabels, data->queueLabelCount);
+      std::ranges::for_each(queues, [&msg_buf](const auto& label) {
+        msg_buf << "  " << label.pLabelName << std::endl;
+      });
+    }
+    if (data->cmdBufLabelCount > 0) {
+      msg_buf << "Command Buffers:" << std::endl;
+
+      std::span cmdBufLabels(data->pCmdBufLabels, data->cmdBufLabelCount);
+      std::ranges::for_each(cmdBufLabels, [&msg_buf](const auto& buf) {
+        msg_buf << "  " << buf.pLabelName << std::endl;
+      });
+    }
+    if (data->objectCount > 0) {
+      msg_buf << "Objects:" << std::endl;
+
+      std::span objects(data->pObjects, data->objectCount);
+      std::ranges::for_each(objects, [&msg_buf](const auto& obj) {
+        msg_buf << "  " << objectTypeToName(obj.objectType);
+        msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
+        if (obj.pObjectName) {
+          msg_buf << " " << obj.pObjectName;
+        }
+        msg_buf << std::endl;
+      });
+    }
+
+    err_data->cb({
+        .severity = sev,
+        .type = error_type,
+        .data = err_data->user_data,
+        .message = msg_buf.str(),
+    });
   }
-
-  ErrorType ty = ErrorType::kGeneral;
-  if ((type & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0) {
-    ty = ErrorType::kPerformance;
-  } else if ((type & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0) {
-    ty = ErrorType::kValidation;
-  }
-
-  std::stringstream msg_buf;
-  msg_buf << "Err: " << data->pMessage << std::endl;
-  if (data->pMessageIdName != nullptr) {
-    msg_buf << "MessageId (" << data->messageIdNumber
-            << "): " << data->pMessageIdName << std::endl;
-  }
-  if (data->queueLabelCount > 0) {
-    msg_buf << "Queues:" << std::endl;
-
-    std::ranges::for_each({data->pQueueLabels, data->queueLabelCount},
-                          [&msg_buf](const auto& label) {
-                            msg_buf << "  " << label.pLabelName << std::endl;
-                          });
-  }
-  if (data->cmdBufLabelCount > 0) {
-    msg_buf << "Command Buffers:" << std::endl;
-
-    std::ranges::for_each({data->pCmdBufLabels, data->cmdBufLabelCount},
-                          [&msg_buf](const auto& buf) {
-                            msg_buf << "  " << buf.pLabelName << std::endl;
-                          });
-  }
-  if (data->objectCount > 0) {
-    msg_buf << "Objects:" << std::endl;
-
-    std::ranges::for_each(
-        {data->pObjects, data->objectCount}, [&msg_buf](const auto& obj) {
-          msg_buf << "  " << objectTypeToName(obj.objectType);
-          msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
-          if (obj.pObjectName) {
-            msg_buf << " " << obj.pObjectName;
-          }
-          msg_buf << std::endl;
-        });
-  }
-
-  std::cout << "msg: " << msg_buf.str() << std::endl;
-  // err_data->cb({
-  //   .severity = sev,
-  //   .type = ty,
-  //   .message = msg_buf.str().c_str(),
-  //   .data = err_data->user_data
-  // });
-  //}
   return VK_FALSE;
 }
 
 auto build_app_info(const DeviceConfig& config) -> VkApplicationInfo {
   return {
       .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+      .pNext = nullptr,
       .pApplicationName = config.app_name().data(),
       .applicationVersion = config.version().to_vk(),
       .pEngineName = kEngineName,
@@ -198,8 +199,11 @@ auto build_instance_create_info(VkApplicationInfo* app_info,
     -> VkInstanceCreateInfo {
   return {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+      .pNext = nullptr,
+      .flags = 0,
       .pApplicationInfo = app_info,
       .enabledLayerCount = 0,
+      .ppEnabledLayerNames = nullptr,
       .enabledExtensionCount = uint32_t(exts.size()),
       .ppEnabledExtensionNames = exts.data(),
   };
@@ -223,8 +227,8 @@ void Device::check_validation_available_if_needed() const {
   std::vector<VkLayerProperties> layers(layer_count);
   vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
 
-  auto has_layer = [&layers](std::string_view name) {
-    return std::ranges::any_of(layers, [name](const auto& prop) {
+  auto has_layer = [&layers](std::string_view name) noexcept {
+    return std::ranges::any_of(layers, [name](const auto& prop) noexcept {
       return name.compare(prop.layerName) == 0;
     });
   };
@@ -234,7 +238,7 @@ void Device::check_validation_available_if_needed() const {
   }
 }
 
-auto Device::build_debug_create_info() const
+auto Device::build_debug_create_info(const DeviceConfig& config) const
     -> VkDebugUtilsMessengerCreateInfoEXT {
   if (!enable_validation_) {
     return {};
@@ -242,13 +246,15 @@ auto Device::build_debug_create_info() const
 
   return {
       .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+      .pNext = nullptr,
+      .flags = 0,
       .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                          VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
       .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
                      VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                      VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
       .pfnUserCallback = debug_callback,
-      //.pUserData = error_data_,
+      .pUserData = static_cast<void*>(config.error_data()),
   };
 }
 
@@ -285,15 +291,15 @@ void Device::pick_physical_device() {
   std::vector<VkPhysicalDevice> devices(count);
   vkEnumeratePhysicalDevices(instance_, &count, devices.data());
 
-  auto is_suitable = [&](const auto& device) {
+  auto is_suitable = [&](const auto& device) noexcept {
     return is_device_suitable(device);
   };
-  auto it = std::ranges::find_if(devices, is_suitable);
-  if (it == devices.end()) {
+  auto iter = std::ranges::find_if(devices, is_suitable);
+  if (iter == devices.end()) {
     throw std::runtime_error("No suitable GPUs found");
   }
 
-  physical_device_.device = *it;
+  physical_device_.device = *iter;
 }
 
 void Device::build_instance(const DeviceConfig& config) {
@@ -306,7 +312,7 @@ void Device::build_instance(const DeviceConfig& config) {
 
   auto app_info = build_app_info(config);
   auto instance_create_info = build_instance_create_info(&app_info, exts);
-  auto debug_create_info = build_debug_create_info();
+  auto debug_create_info = build_debug_create_info(config);
 
   if (enable_validation_) {
     instance_create_info.enabledLayerCount = kValidationLayers.size();
