@@ -1,332 +1,141 @@
-#include <algorithm>
-#include <cstdint>
-#include <iostream>
-#include <ranges>
-#include <span>
-#include <sstream>
-#include <stdexcept>
+module;
 
-#include "src/engine.h"
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "src/vk.h"
+#include "src/pad.h"
+
+export module engine;
 
 namespace el::engine {
-namespace {
 
-const char* const kEngineName = "Elysian Engine";
-constexpr uint8_t kEngineMajor = 0;
-constexpr uint8_t kEngineMinor = 1;
-constexpr uint8_t kEnginePatch = 0;
+// Shift values for creating a Vulkan Version.
+constexpr auto kVkVariantShift = 29;
+constexpr auto kVkMajorShift = 22;
+constexpr auto kVkMinorShift = 12;
 
-constexpr std::array<const char*, 1> kValidationLayers = {
-    {"VK_LAYER_KHRONOS_validation"}};
+export enum class ErrorSeverity {
+  kVerbose,
+  kInfo,
+  kWarning,
+  kError,
+};
 
-auto objectTypeToName(VkObjectType type) -> std::string_view {
-  switch (type) {
-    case VK_OBJECT_TYPE_INSTANCE:
-      return "instance";
-    case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
-      return "physical_device";
-    case VK_OBJECT_TYPE_DEVICE:
-      return "device";
-    case VK_OBJECT_TYPE_QUEUE:
-      return "queue";
-    case VK_OBJECT_TYPE_SEMAPHORE:
-      return "semaphore";
-    case VK_OBJECT_TYPE_COMMAND_BUFFER:
-      return "command_buffer";
-    case VK_OBJECT_TYPE_FENCE:
-      return "fence";
-    case VK_OBJECT_TYPE_DEVICE_MEMORY:
-      return "device_memory";
-    case VK_OBJECT_TYPE_BUFFER:
-      return "buffer";
-    case VK_OBJECT_TYPE_IMAGE:
-      return "image";
-    case VK_OBJECT_TYPE_EVENT:
-      return "event";
-    case VK_OBJECT_TYPE_QUERY_POOL:
-      return "query_pool";
-    case VK_OBJECT_TYPE_BUFFER_VIEW:
-      return "buffer_view";
-    case VK_OBJECT_TYPE_IMAGE_VIEW:
-      return "image_view";
-    case VK_OBJECT_TYPE_SHADER_MODULE:
-      return "shader_module";
-    case VK_OBJECT_TYPE_PIPELINE_CACHE:
-      return "pipeline_cache";
-    case VK_OBJECT_TYPE_PIPELINE_LAYOUT:
-      return "pipeline_layout";
-    case VK_OBJECT_TYPE_RENDER_PASS:
-      return "render_pass";
-    case VK_OBJECT_TYPE_PIPELINE:
-      return "pipeline";
-    case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:
-      return "descriptor_set_layout";
-    case VK_OBJECT_TYPE_SAMPLER:
-      return "sampler";
-    case VK_OBJECT_TYPE_DESCRIPTOR_POOL:
-      return "descriptor_pool";
-    case VK_OBJECT_TYPE_DESCRIPTOR_SET:
-      return "descriptor_set";
-    case VK_OBJECT_TYPE_FRAMEBUFFER:
-      return "framebuffer";
-    case VK_OBJECT_TYPE_COMMAND_POOL:
-      return "command_pool";
-    case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:
-      return "sampler_ycbcr_conversion";
-    case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE:
-      return "descriptor_update_template";
-    case VK_OBJECT_TYPE_SURFACE_KHR:
-      return "surface";
-    case VK_OBJECT_TYPE_SWAPCHAIN_KHR:
-      return "swapchain";
-    case VK_OBJECT_TYPE_DISPLAY_KHR:
-      return "display";
-    case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:
-      return "display_mode";
-    case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:
-      return "debug_report_callback";
-    case VK_OBJECT_TYPE_CU_MODULE_NVX:
-      return "cu_module";
-    case VK_OBJECT_TYPE_CU_FUNCTION_NVX:
-      return "cu_function";
-    case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT:
-      return "debug_utils_messenger";
-    case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR:
-    case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV:
-      return "acceleration_structure";
-    case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:
-      return "validation_cache";
-    case VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL:
-      return "performance_configuration";
-    case VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR:
-      return "deferred_operation";
-    case VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV:
-      return "indirect_commands_layout";
-    case VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT:
-      return "private_data_slot";
-    case VK_OBJECT_TYPE_UNKNOWN:
-    case VK_OBJECT_TYPE_MAX_ENUM:
-      return "unknown";
+export enum class ErrorType {
+  kGeneral,
+  kValidation,
+  kPerformance,
+};
+
+export struct Error {
+  ErrorSeverity severity;
+  ErrorType type;
+  void* data;
+  std::string_view message;
+};
+
+export using ErrorCallback = std::function<void(const Error& data)>;
+export struct ErrorData {
+  ErrorCallback cb;
+  void* user_data = nullptr;
+};
+
+export struct PhysicalDevice {
+  VkPhysicalDevice device = VK_NULL_HANDLE;
+  VkPhysicalDeviceFeatures features = {};
+  EL_PAD(4);
+  VkPhysicalDeviceProperties properties = {};
+  VkPhysicalDeviceMemoryProperties memory_properties = {};
+};
+
+export struct VersionInfo {
+  uint32_t variant = 0;  // NOLINT(misc-non-private-member-variables-in-classes)
+  uint32_t major = 1;    // NOLINT(misc-non-private-member-variables-in-classes)
+  uint32_t minor = 0;    // NOLINT(misc-non-private-member-variables-in-classes)
+  uint32_t patch = 0;    // NOLINT(misc-non-private-member-variables-in-classes)
+
+  [[nodiscard]] auto to_vk() const -> uint32_t {
+    return variant << kVkVariantShift | major << kVkMajorShift |
+           minor << kVkMinorShift | patch;
   }
-  return "unknown";
-}
+};
 
-auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-                    VkDebugUtilsMessageTypeFlagsEXT type,
-                    const VkDebugUtilsMessengerCallbackDataEXT* data,
-                    void* user_data) -> VkBool32 {
-  const auto* err_data = static_cast<ErrorData*>(user_data);
-
-  if (err_data != nullptr && err_data->cb) {
-    ErrorSeverity sev = ErrorSeverity::kError;
-    if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
-      sev = ErrorSeverity::kWarning;
-    } else if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
-      sev = ErrorSeverity::kInfo;
-    } else if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) !=
-               0) {
-      sev = ErrorSeverity::kVerbose;
-    }
-
-    ErrorType error_type = ErrorType::kGeneral;
-    if ((type & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0) {
-      error_type = ErrorType::kPerformance;
-    } else if ((type & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0) {
-      error_type = ErrorType::kValidation;
-    }
-
-    std::stringstream msg_buf;
-    msg_buf << "Err: " << data->pMessage << std::endl;
-    if (data->pMessageIdName != nullptr) {
-      msg_buf << "MessageId (" << data->messageIdNumber
-              << "): " << data->pMessageIdName << std::endl;
-    }
-    if (data->queueLabelCount > 0) {
-      msg_buf << "Queues:" << std::endl;
-
-      std::span queues(data->pQueueLabels, data->queueLabelCount);
-      std::ranges::for_each(queues, [&msg_buf](const auto& label) {
-        msg_buf << "  " << label.pLabelName << std::endl;
-      });
-    }
-    if (data->cmdBufLabelCount > 0) {
-      msg_buf << "Command Buffers:" << std::endl;
-
-      std::span cmdBufLabels(data->pCmdBufLabels, data->cmdBufLabelCount);
-      std::ranges::for_each(cmdBufLabels, [&msg_buf](const auto& buf) {
-        msg_buf << "  " << buf.pLabelName << std::endl;
-      });
-    }
-    if (data->objectCount > 0) {
-      msg_buf << "Objects:" << std::endl;
-
-      std::span objects(data->pObjects, data->objectCount);
-      std::ranges::for_each(objects, [&msg_buf](const auto& obj) {
-        msg_buf << "  " << objectTypeToName(obj.objectType);
-        msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
-        if (obj.pObjectName) {
-          msg_buf << " " << obj.pObjectName;
-        }
-        msg_buf << std::endl;
-      });
-    }
-
-    err_data->cb({
-        .severity = sev,
-        .type = error_type,
-        .data = err_data->user_data,
-        .message = msg_buf.str(),
-    });
-  }
-  return VK_FALSE;
-}
-
-auto build_app_info(const DeviceConfig& config) -> VkApplicationInfo {
-  return {
-      .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-      .pNext = nullptr,
-      .pApplicationName = config.app_name().data(),
-      .applicationVersion = config.version().to_vk(),
-      .pEngineName = kEngineName,
-      .engineVersion =
-          VersionInfo{0, kEngineMajor, kEngineMinor, kEnginePatch}.to_vk(),
-      .apiVersion = VersionInfo{0, 1, 2, 0}.to_vk(),
-  };
-}
-
-auto build_instance_create_info(VkApplicationInfo* app_info,
-                                const std::vector<const char*>& exts)
-    -> VkInstanceCreateInfo {
-  return {
-      .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-      .pNext = nullptr,
-      .flags = 0,
-      .pApplicationInfo = app_info,
-      .enabledLayerCount = 0,
-      .ppEnabledLayerNames = nullptr,
-      .enabledExtensionCount = uint32_t(exts.size()),
-      .ppEnabledExtensionNames = exts.data(),
-  };
-}
-
-}  // namespace
-
-Device::Device(const DeviceConfig& config)
-    : enable_validation_(config.enable_validation()) {
-  build_instance(config);
-}
-
-void Device::check_validation_available_if_needed() const {
-  if (!enable_validation_) {
-    return;
+export class DeviceConfig {
+ public:
+  auto set_enable_validation() -> DeviceConfig& {
+    enable_validation_ = true;
+    return *this;
   }
 
-  uint32_t layer_count = 0;
-  vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-  std::vector<VkLayerProperties> layers(layer_count);
-  vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-  auto has_layer = [&layers](std::string_view name) noexcept {
-    return std::ranges::any_of(layers, [name](const auto& prop) noexcept {
-      return name.compare(prop.layerName) == 0;
-    });
-  };
-
-  if (!std::ranges::all_of(kValidationLayers, has_layer)) {
-    throw std::runtime_error("Validation layer not available");
-  }
-}
-
-auto Device::build_debug_create_info(const DeviceConfig& config) const
-    -> VkDebugUtilsMessengerCreateInfoEXT {
-  if (!enable_validation_) {
-    return {};
+  auto set_app_name(std::string_view app_name) -> DeviceConfig& {
+    app_name_ = app_name;
+    return *this;
   }
 
-  return {
-      .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-      .pNext = nullptr,
-      .flags = 0,
-      .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-      .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                     VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-      .pfnUserCallback = debug_callback,
-      .pUserData = static_cast<void*>(config.error_data()),
-  };
-}
-
-void Device::setup_debug_handler_if_needed(
-    VkDebugUtilsMessengerCreateInfoEXT* debug_create_info) {
-  if (!enable_validation_) {
-    return;
+  auto set_app_version(uint32_t major, uint32_t minor, uint32_t patch)
+      -> DeviceConfig& {
+    version_ = {0, major, minor, patch};
+    return *this;
   }
 
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-      vkGetInstanceProcAddr(instance_, "vkCreateDebugUtilsMessengerEXT"));
-  if (func == nullptr) {
-    throw std::runtime_error("DebugUtilsMessengerEXT not available");
+  auto set_device_extensions(const std::vector<const char*>& exts)
+      -> DeviceConfig& {
+    device_extensions_ = exts;
+    return *this;
   }
 
-  auto res = func(instance_, debug_create_info, nullptr, &debug_handler_);
-  if (res != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create debug handler");
-  }
-}
-
-static auto is_device_suitable(VkPhysicalDevice /* unused */) -> bool {
-  return true;
-}
-
-void Device::pick_physical_device() {
-  uint32_t count = 0;
-  vkEnumeratePhysicalDevices(instance_, &count, nullptr);
-  if (count == 0) {
-    throw std::runtime_error("No supported GPUs found");
+  auto set_error_data(ErrorData* data) -> DeviceConfig& {
+    error_data_ = data;
+    return *this;
   }
 
-  std::vector<VkPhysicalDevice> devices(count);
-  vkEnumeratePhysicalDevices(instance_, &count, devices.data());
-
-  auto is_suitable = [&](const auto& device) noexcept {
-    return is_device_suitable(device);
-  };
-  auto iter = std::ranges::find_if(devices, is_suitable);
-  if (iter == devices.end()) {
-    throw std::runtime_error("No suitable GPUs found");
+  [[nodiscard]] auto enable_validation() const -> bool {
+    return enable_validation_;
   }
-
-  physical_device_.device = *iter;
-}
-
-void Device::build_instance(const DeviceConfig& config) {
-  check_validation_available_if_needed();
-
-  auto exts = config.device_extensions();
-  if (enable_validation_) {
-    exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  [[nodiscard]] auto app_name() const -> std::string_view { return app_name_; }
+  [[nodiscard]] auto device_extensions() const -> std::vector<const char*> {
+    return device_extensions_;
   }
+  [[nodiscard]] auto version() const -> VersionInfo { return version_; }
+  [[nodiscard]] auto error_data() const -> ErrorData* { return error_data_; }
 
-  auto app_info = build_app_info(config);
-  auto instance_create_info = build_instance_create_info(&app_info, exts);
-  auto debug_create_info = build_debug_create_info(config);
+ private:
+  std::string_view app_name_;
+  ErrorData* error_data_ = nullptr;
+  std::vector<const char*> device_extensions_ = {};
+  VersionInfo version_ = {};
 
-  if (enable_validation_) {
-    instance_create_info.enabledLayerCount = kValidationLayers.size();
-    instance_create_info.ppEnabledLayerNames = kValidationLayers.data();
-    instance_create_info.pNext = &debug_create_info;
-  }
+  bool enable_validation_ = false;
+  EL_PAD(7);
+};
 
-  auto res = vkCreateInstance(&instance_create_info, nullptr, &instance_);
-  if (res != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create vulkan instance");
-  }
+export class Device {
+ public:
+  explicit Device(const DeviceConfig& config);
 
-  setup_debug_handler_if_needed(&debug_create_info);
-  pick_physical_device();
-}
+ private:
+  // [[nodiscard]] auto is_device_suitable(VkPhysicalDevice device) const ->
+  // bool;
+  void check_validation_available_if_needed() const;
+  [[nodiscard]] auto build_debug_create_info(const DeviceConfig& config) const
+      -> VkDebugUtilsMessengerCreateInfoEXT;
+  void setup_debug_handler_if_needed(
+      VkDebugUtilsMessengerCreateInfoEXT* debug_create_info);
+  void pick_physical_device();
+  void build_instance(const DeviceConfig& config);
+
+  VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
+
+  PhysicalDevice physical_device_ = {};
+
+  VkInstance instance_ = {};
+  bool enable_validation_ = false;
+
+  EL_PAD(7);
+};
 
 }  // namespace el::engine

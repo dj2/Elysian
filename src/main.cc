@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "src/engine.h"
+import engine;
 
 auto main() -> int {
   el::engine::ErrorData err_data{

@@ -4,6 +4,7 @@ FMT=clang-format
 
 CFLAGS=\
 	-std=c++20 \
+	-fmodules-ts \
 	-Wall \
 	-Wcast-align \
 	-Wcast-qual \
@@ -49,15 +50,12 @@ CFLAGS=\
 	-I. \
 	-I$(VULKAN_SDK)/include
 
-
 SRCS=\
-	src/engine.cc
+	src/engine.cc \
+	src/engine_impl.cc
 
 HDRS=\
-	src/engine.h \
 	src/pad.h
-
-O_FILES=$(patsubst %.cc,%.o,$(SRCS))
 
 .PHONY: all lint tidy fmt clean
 
@@ -74,9 +72,9 @@ fmt: $(HDRS) $(SRCS)
 %.o: %.cc %.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
-elysian: $(O_FILES) $(HDRS) src/main.cc
-	@echo $(O_FILES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(O_FILES) -L$(VULKAN_SDK)/lib -lvulkan src/main.cc -o elysian
+elysian: $(SRCS) $(HDRS) src/main.cc
+	@echo $(SRCS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SRCS) -L$(VULKAN_SDK)/lib -lvulkan src/main.cc -o elysian
 
 clean:
 	rm -rf elysian *.o
