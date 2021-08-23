@@ -17,10 +17,10 @@ Window::Window(const WindowConfig& config) {
   });
 
   if (!glfwInit()) {
-    std::runtime_error("GLFW initialization failed.");
+    throw std::runtime_error("GLFW initialization failed.");
   }
   if (!glfwVulkanSupported()) {
-    std::runtime_error("GLFW vulkan support missing.");
+    throw std::runtime_error("GLFW vulkan support missing.");
   }
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
@@ -28,7 +28,7 @@ Window::Window(const WindowConfig& config) {
                              static_cast<int>(config.height()),
                              config.title().data(), nullptr, nullptr);
   if (!window_) {
-    std::runtime_error("GLFW window creation failed.");
+    throw std::runtime_error("GLFW window creation failed.");
   }
 
   glfwSetWindowUserPointer(window_, this);
