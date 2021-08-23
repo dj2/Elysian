@@ -48,11 +48,20 @@ CFLAGS=\
 	-pedantic \
 	-pedantic-errors \
 	-I. \
-	-I$(VULKAN_SDK)/include
+	-I$(VULKAN_SDK)/include \
+	-I$(GLFW_SDK)/include
+
+LDFLAGS=\
+	-L$(VULKAN_SDK)/lib \
+	-L$(GLFW_SDK)/lib \
+	-lvulkan \
+	-lglfw
 
 SRCS=\
 	src/engine.cc \
-	src/engine_impl.cc
+	src/engine_impl.cc \
+	src/window.cc \
+	src/window_impl.cc
 
 HDRS=\
 	src/pad.h
@@ -74,7 +83,7 @@ fmt: $(HDRS) $(SRCS)
 
 elysian: $(SRCS) $(HDRS) src/main.cc
 	@echo $(SRCS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SRCS) -L$(VULKAN_SDK)/lib -lvulkan src/main.cc -o elysian
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SRCS) $(LDFLAGS) src/main.cc -o elysian
 
 clean:
 	rm -rf elysian *.o

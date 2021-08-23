@@ -34,8 +34,8 @@ export enum class ErrorType {
 export struct Error {
   ErrorSeverity severity;
   ErrorType type;
-  void* data;
   std::string_view message;
+  void* user_data = nullptr;
 };
 
 export using ErrorCallback = std::function<void(const Error& data)>;
@@ -53,10 +53,10 @@ export struct PhysicalDevice {
 };
 
 export struct VersionInfo {
-  uint32_t variant = 0;  // NOLINT(misc-non-private-member-variables-in-classes)
-  uint32_t major = 1;    // NOLINT(misc-non-private-member-variables-in-classes)
-  uint32_t minor = 0;    // NOLINT(misc-non-private-member-variables-in-classes)
-  uint32_t patch = 0;    // NOLINT(misc-non-private-member-variables-in-classes)
+  uint32_t variant = 0;
+  uint32_t major = 1;
+  uint32_t minor = 0;
+  uint32_t patch = 0;
 
   [[nodiscard]] auto to_vk() const -> uint32_t {
     return variant << kVkVariantShift | major << kVkMajorShift |

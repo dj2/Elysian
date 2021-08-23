@@ -8,6 +8,7 @@ then
 fi
 
 export VULKAN_SDK=${VULKAN_SDK:-$HOME/vulkan/1.2.182.0/$DIR}
+export GLFW_SDK=${GLFW_SDK:-/opt/homebrew/Cellar/glfw/3.3.4}
 
 if [ "$host" = 'Darwin' ];
 then
@@ -18,4 +19,4 @@ else
   export VK_LAYER_PATH=$VULKAN_SDK/etc/vulkan/explicit_layer.d
 fi
 
-export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$GLFW_SDK/lib:$LD_LIBRARY_PATH

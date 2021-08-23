@@ -178,8 +178,8 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
     err_data->cb({
         .severity = sev,
         .type = error_type,
-        .data = err_data->user_data,
         .message = msg_buf.str(),
+        .user_data = err_data->user_data,
     });
   }
   return VK_FALSE;
