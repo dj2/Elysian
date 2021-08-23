@@ -6,7 +6,9 @@ import window;
 auto main() -> int {
   el::Window window(el::WindowConfig()
     .set_title("Elysian")
-    .set_dimensions(1024, 768));
+    .set_dimensions({
+      .width = 1024,
+      .height = 768}));
 
   el::engine::ErrorData err_data{
     .cb = [](const el::engine::Error& data) {
@@ -23,7 +25,7 @@ auto main() -> int {
     .set_device_extensions(window.requiredEngineExtensions()));
 
   while (!window.shouldClose()) {
-    window.poll();
+    el::Window::Poll();
   }
 
   return 0;
