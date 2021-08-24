@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "src/algorithm.h"
+
 namespace el {
 
 enum class EventType {
@@ -44,8 +46,7 @@ class EventService {
     }
 
     auto& vec = it->second;
-    std::for_each(std::begin(vec), std::end(vec),
-                  [data](const EventCallback& cb) { cb(data); });
+    el::ranges::for_each(vec, [data](const EventCallback& cb) { cb(data); });
   }
 
  private:

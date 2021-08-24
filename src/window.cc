@@ -39,11 +39,12 @@ Window::Window(const WindowConfig& config)
   }
 
   glfwSetWindowUserPointer(window_, this);
-  glfwSetFramebufferSizeCallback(window_, [](GLFWwindow* win, int, int) {
-    auto* t = static_cast<Window*>(glfwGetWindowUserPointer(win));
-    ResizeEvent evt;
-    t->event_service_->emit(EventType::kResized, &evt);
-  });
+  glfwSetFramebufferSizeCallback(
+      window_, [](GLFWwindow* win, int /*width*/, int /*height*/) {
+        auto* t = static_cast<Window*>(glfwGetWindowUserPointer(win));
+        ResizeEvent evt;
+        t->event_service_->emit(EventType::kResized, &evt);
+      });
 }
 
 Window::~Window() {

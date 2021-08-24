@@ -1,20 +1,13 @@
 FormatStyle: file
 Checks: "\
-  -*,\
-  abseil-*,\
-  bugprone-*,\
-  cert-*,\
-  clang-analyzer-*,\
-  concurrency-*,\
-  cppcoreguidelines-*,\
-  google-*,\
-  llvm-*,\
+  *,\
+  -altera-*,\
+  -fuchsia-default-arguments-calls,\
+  -fuchsia-trailing-return,\
+  -hicpp-no-array-decay,\
+  -hicpp-signed-bitwise,\
   -llvm-header-guard,\
-  misc-*,\
-  modernize-*,\
-  performance-*,\
-  portability-*,\
-  readability-*,\
+  -llvmlibc-*,\
   -readability-identifier-length,\
 "
 WarningsAsErrors: '*'
