@@ -1,13 +1,17 @@
 #include <iostream>
 
-import dimensions;
-import engine;
-import event_service;
-import window;
+#include "src/dimensions.h"
+#include "src/engine.h"
+#include "src/event_service.h"
+#include "src/window.h"
 
 auto main() -> int {
-  el::Window window(el::WindowConfig().set_title("Elysian").set_dimensions(
-      {.width = 1024, .height = 768}));
+  el::EventService event_service;
+
+  el::Window window(el::WindowConfig()
+                        .set_title("Elysian")
+                        .set_dimensions({.width = 1024, .height = 768})
+                        .set_event_service(&event_service));
 
   el::engine::ErrorData err_data{
       .cb =
@@ -24,12 +28,9 @@ auto main() -> int {
           .set_enable_validation()
           .set_error_data(&err_data)
           .set_device_extensions(window.required_engine_extensions())
+          .set_event_service(&event_service)
           .set_dimensions_cb(
               [&window]() -> el::Dimensions { return window.dimensions(); }));
-
-  window.add_event_listener(
-      el::EventType::kResized,
-      [&device](const el::Event* /*evt*/) -> void { device.set_resized(); });
 
   while (!window.shouldClose()) {
     el::Window::Poll();

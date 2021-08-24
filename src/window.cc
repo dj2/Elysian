@@ -1,64 +1,72 @@
-module;
+#include "src/window.h"
 
-#include "src/glfw3.h"
-
+#include <cassert>
+#include <iostream>
+#include <stdexcept>
 #include <string_view>
 #include <vector>
 
-import dimensions;
-import event_service;
-
-export module window;
+#include "src/dimensions.h"
+#include "src/event_service.h"
+#include "src/glfw3.h"
 
 namespace el {
 
-constexpr uint32_t kDefaultWidth = 800;
-constexpr uint32_t kDefaultHeight = 600;
+Window::Window(const WindowConfig& config)
+    : event_service_(config.event_service()) {
+  assert(event_service_ != nullptr);
 
-export class WindowConfig {
- public:
-  auto set_title(std::string_view title) -> WindowConfig& {
-    title_ = title;
-    return *this;
+  glfwSetErrorCallback([](int error, const char* desc) {
+    std::cerr << "Err: " << error << ": " << desc << std::endl;
+  });
+
+  if (!glfwInit()) {
+    throw std::runtime_error("GLFW initialization failed.");
+  }
+  if (!glfwVulkanSupported()) {
+    throw std::runtime_error("GLFW vulkan support missing.");
+  }
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+  window_ = glfwCreateWindow(static_cast<int>(config.width()),
+                             static_cast<int>(config.height()),
+                             config.title().data(), nullptr, nullptr);
+  if (!window_) {
+    throw std::runtime_error("GLFW window creation failed.");
   }
 
-  auto set_dimensions(Dimensions dims) -> WindowConfig& {
-    dimensions_ = dims;
-    return *this;
+  glfwSetWindowUserPointer(window_, this);
+  glfwSetFramebufferSizeCallback(window_, [](GLFWwindow* win, int, int) {
+    auto* t = static_cast<Window*>(glfwGetWindowUserPointer(win));
+    ResizeEvent evt;
+    t->event_service_->emit(EventType::kResized, &evt);
+  });
+}
+
+Window::~Window() {
+  glfwDestroyWindow(window_);
+  glfwTerminate();
+}
+
+auto Window::required_engine_extensions() -> std::vector<const char*> {
+  uint32_t glfw_ext_count = 0;
+  const char** glfw_exts = glfwGetRequiredInstanceExtensions(&glfw_ext_count);
+  if (glfw_exts == nullptr) {
+    throw std::runtime_error("GLFW error retrieving instance extensions");
   }
 
-  [[nodiscard]] auto title() const -> std::string_view { return title_; }
-  [[nodiscard]] auto width() const -> uint32_t { return dimensions_.width; }
-  [[nodiscard]] auto height() const -> uint32_t { return dimensions_.height; }
+  return std::vector<const char*>(glfw_exts, glfw_exts + glfw_ext_count);
+}
 
- private:
-  std::string_view title_;
-  Dimensions dimensions_ = {.width = kDefaultWidth, .height = kDefaultHeight};
-};
+auto Window::dimensions() const -> Dimensions {
+  int w = 0;
+  int h = 0;
+  glfwGetFramebufferSize(window_, &w, &h);
 
-export class Window {
- public:
-  explicit Window(const WindowConfig& config);
-  ~Window();
-
-  // Returned strings are owned by the window system and will be free'd.
-  auto required_engine_extensions() -> std::vector<const char*>;
-
-  auto add_event_listener(EventType event, EventCallback cb) {
-    event_service_.add(event, cb);
-  }
-
-  [[nodiscard]] auto shouldClose() const -> bool {
-    return glfwWindowShouldClose(window_) != 0;
-  }
-
-  [[nodiscard]] auto dimensions() const -> Dimensions;
-
-  auto static Poll() -> void { glfwPollEvents(); }
-
- private:
-  GLFWwindow* window_ = nullptr;
-  EventService event_service_;
-};
+  return {
+      .width = static_cast<uint32_t>(w),
+      .height = static_cast<uint32_t>(h),
+  };
+}
 
 }  // namespace el

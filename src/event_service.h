@@ -1,4 +1,4 @@
-module;
+#pragma once
 
 #include <algorithm>
 #include <functional>
@@ -6,19 +6,17 @@ module;
 #include <unordered_map>
 #include <vector>
 
-export module event_service;
-
 namespace el {
 
-export enum class EventType { kResized };
+enum class EventType { kResized };
 
-export struct Event {};
+struct Event {};
 
-export struct ResizeEvent : public Event {};
+struct ResizeEvent : public Event {};
 
-export using EventCallback = std::function<void(const Event*)>;
+using EventCallback = std::function<void(const Event*)>;
 
-export class EventService {
+class EventService {
  public:
   auto add(EventType event, EventCallback cb) -> void {
     auto it = listeners_.find(event);
@@ -37,7 +35,9 @@ export class EventService {
       return;
     }
 
-    std::ranges::for_each(it->second, [data](EventCallback cb) { cb(data); });
+    auto& vec = it->second;
+    std::for_each(std::begin(vec), std::end(vec),
+                  [data](EventCallback cb) { cb(data); });
   }
 
  private:

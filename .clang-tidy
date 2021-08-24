@@ -9,7 +9,6 @@ Checks: "\
   cppcoreguidelines-*,\
   google-*,\
   llvm-*,\
-  -llvm-header-guard,\
   misc-*,\
   modernize-*,\
   performance-*,\

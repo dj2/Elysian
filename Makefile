@@ -1,4 +1,4 @@
-CC=g++-11
+CC=clang++
 TIDY=clang-tidy
 FMT=clang-format
 
@@ -6,47 +6,12 @@ CFLAGS=\
 	-g \
 	-O0 \
 	-std=c++20 \
-	-fmodules-ts \
 	-Wall \
-	-Wcast-align \
-	-Wcast-qual \
-	-Wconversion \
-	-Wctor-dtor-privacy \
+	-Werror \
+	-Weverything \
 	-Wextra \
-	-Wfloat-equal \
-	-Wformat=2 \
-	-Wformat-nonliteral \
-	-Wformat-security \
-	-Wformat-y2k \
-	-Wimport \
-	-Winit-self \
-	-Winline \
-	-Wlogical-op \
-	-Wmissing-declarations \
-	-Wmissing-field-initializers \
-	-Wmissing-include-dirs \
-	-Wmissing-noreturn \
-	-Wnoexcept \
-	-Wold-style-cast \
-	-Woverloaded-virtual \
-	-Wpacked \
-	-Wpadded \
-	-Wpointer-arith \
-	-Wredundant-decls \
-	-Wshadow \
-	-Wsign-conversion \
-	-Wsign-promo \
-	-Wstrict-null-sentinel \
-	-Wstrict-overflow=5 \
-	-Wswitch-enum \
-	-Wundef \
-	-Wunreachable-code \
-	-Wunused \
-	-Wunused-parameter \
-	-Wuseless-cast \
-	-Wvariadic-macros \
-	-Wwrite-strings \
-	-Wzero-as-null-pointer-constant \
+	-Wno-c++98-compat \
+	-Wno-c++98-compat-pedantic \
 	-pedantic \
 	-pedantic-errors \
 	-I. \
@@ -60,15 +25,17 @@ LDFLAGS=\
 	-lglfw
 
 SRCS=\
-	src/dimensions.cc \
 	src/engine.cc \
-	src/engine_impl.cc \
-	src/event_service.cc \
-	src/window.cc \
-	src/window_impl.cc
+	src/window.cc
 
 HDRS=\
-	src/pad.h
+	src/dimensions.h \
+	src/engine.h \
+	src/event_service.h \
+	src/glfw3.h \
+	src/pad.h \
+	src/vk.h \
+	src/window.h
 
 .PHONY: all lint tidy fmt clean
 
