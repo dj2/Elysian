@@ -44,7 +44,7 @@ all: elysian
 lint: tidy
 
 tidy: $(HDRS) $(SRCS)
-	$(TIDY) -header-filter=src/.* $(SRCS) src/main.cc -- -x c++ $(CFLAGS)
+	$(TIDY) --fix -header-filter=src/.* $(SRCS) src/main.cc -- -x c++ $(CFLAGS)
 
 fmt: $(HDRS) $(SRCS)
 	$(FMT) -i $(HDRS) $(SRCS) src/main.cc
