@@ -1,3 +1,4 @@
 *.o
 elysian
 gcm.cache
+*.dSYM

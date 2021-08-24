@@ -4,7 +4,6 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
-#include <ranges>
 #include <span>
 #include <sstream>
 #include <stdexcept>
