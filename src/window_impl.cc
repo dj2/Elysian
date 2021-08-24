@@ -7,6 +7,9 @@ module;
 #include <string_view>
 #include <vector>
 
+import dimensions;
+import event_service;
+
 module window;
 
 namespace el {
@@ -32,8 +35,11 @@ Window::Window(const WindowConfig& config) {
   }
 
   glfwSetWindowUserPointer(window_, this);
-  glfwSetFramebufferSizeCallback(
-      window_, [](GLFWwindow* /*window*/, int /*width*/, int /*height*/) {});
+  glfwSetFramebufferSizeCallback(window_, [](GLFWwindow* win, int, int) {
+    auto* t = static_cast<Window*>(glfwGetWindowUserPointer(win));
+    ResizeEvent evt;
+    t->event_service_.emit(EventType::kResized, &evt);
+  });
 }
 
 Window::~Window() {
@@ -41,7 +47,7 @@ Window::~Window() {
   glfwTerminate();
 }
 
-auto Window::requiredEngineExtensions() -> std::vector<const char*> {
+auto Window::required_engine_extensions() -> std::vector<const char*> {
   uint32_t glfw_ext_count = 0;
   const char** glfw_exts = glfwGetRequiredInstanceExtensions(&glfw_ext_count);
   if (glfw_exts == nullptr) {
@@ -49,6 +55,17 @@ auto Window::requiredEngineExtensions() -> std::vector<const char*> {
   }
 
   return std::vector<const char*>(glfw_exts, glfw_exts + glfw_ext_count);
+}
+
+auto Window::dimensions() const -> Dimensions {
+  int w = 0;
+  int h = 0;
+  glfwGetFramebufferSize(window_, &w, &h);
+
+  return {
+      .width = static_cast<uint32_t>(w),
+      .height = static_cast<uint32_t>(h),
+  };
 }
 
 }  // namespace el

@@ -1,6 +1,7 @@
 module;
 
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <ranges>
@@ -9,6 +10,8 @@ module;
 #include <stdexcept>
 
 #include "src/vk.h"
+
+import dimensions;
 
 module engine;
 
@@ -216,7 +219,10 @@ auto build_instance_create_info(VkApplicationInfo* app_info,
 }  // namespace
 
 Device::Device(const DeviceConfig& config)
-    : enable_validation_(config.enable_validation()) {
+    : dimensions_cb_(config.dimensions_cb()),
+      enable_validation_(config.enable_validation()) {
+  assert(dimensions_cb_ != nullptr);
+
   build_instance(config);
 }
 

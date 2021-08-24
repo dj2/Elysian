@@ -9,6 +9,8 @@ module;
 #include "src/pad.h"
 #include "src/vk.h"
 
+import dimensions;
+
 export module engine;
 
 namespace el::engine {
@@ -93,6 +95,11 @@ export class DeviceConfig {
     return *this;
   }
 
+  auto set_dimensions_cb(DimensionsCallback cb) -> DeviceConfig& {
+    dimensions_cb_ = cb;
+    return *this;
+  }
+
   [[nodiscard]] auto enable_validation() const -> bool {
     return enable_validation_;
   }
@@ -102,12 +109,16 @@ export class DeviceConfig {
   }
   [[nodiscard]] auto version() const -> VersionInfo { return version_; }
   [[nodiscard]] auto error_data() const -> ErrorData* { return error_data_; }
+  [[nodiscard]] auto dimensions_cb() const -> DimensionsCallback {
+    return dimensions_cb_;
+  }
 
  private:
   std::string_view app_name_;
   ErrorData* error_data_ = nullptr;
   std::vector<const char*> device_extensions_ = {};
   VersionInfo version_ = {};
+  DimensionsCallback dimensions_cb_ = nullptr;
 
   bool enable_validation_ = false;
   EL_PAD(7);
@@ -116,6 +127,8 @@ export class DeviceConfig {
 export class Device {
  public:
   explicit Device(const DeviceConfig& config);
+
+  auto set_resized() -> void { framebuffer_resized_ = true; }
 
  private:
   // [[nodiscard]] auto is_device_suitable(VkPhysicalDevice device) const ->
@@ -128,14 +141,17 @@ export class Device {
   void pick_physical_device();
   void build_instance(const DeviceConfig& config);
 
+  DimensionsCallback dimensions_cb_ = nullptr;
+
   VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
 
   PhysicalDevice physical_device_ = {};
 
   VkInstance instance_ = {};
   bool enable_validation_ = false;
+  bool framebuffer_resized_ = false;
 
-  EL_PAD(7);
+  EL_PAD(6);
 };
 
 }  // namespace el::engine

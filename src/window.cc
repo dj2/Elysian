@@ -5,14 +5,12 @@ module;
 #include <string_view>
 #include <vector>
 
+import dimensions;
+import event_service;
+
 export module window;
 
 namespace el {
-
-export struct Dimensions {
-  uint32_t width;
-  uint32_t height;
-};
 
 constexpr uint32_t kDefaultWidth = 800;
 constexpr uint32_t kDefaultHeight = 600;
@@ -44,16 +42,23 @@ export class Window {
   ~Window();
 
   // Returned strings are owned by the window system and will be free'd.
-  auto requiredEngineExtensions() -> std::vector<const char*>;
+  auto required_engine_extensions() -> std::vector<const char*>;
+
+  auto add_event_listener(EventType event, EventCallback cb) {
+    event_service_.add(event, cb);
+  }
 
   [[nodiscard]] auto shouldClose() const -> bool {
     return glfwWindowShouldClose(window_) != 0;
   }
 
+  [[nodiscard]] auto dimensions() const -> Dimensions;
+
   auto static Poll() -> void { glfwPollEvents(); }
 
  private:
   GLFWwindow* window_ = nullptr;
+  EventService event_service_;
 };
 
 }  // namespace el

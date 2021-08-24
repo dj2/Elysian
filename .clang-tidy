@@ -15,5 +15,6 @@ Checks: "\
   performance-*,\
   portability-*,\
   readability-*,\
+  -readability-identifier-length,\
 "
 WarningsAsErrors: '*'

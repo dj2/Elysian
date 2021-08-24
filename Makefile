@@ -3,6 +3,8 @@ TIDY=clang-tidy
 FMT=clang-format
 
 CFLAGS=\
+	-g \
+	-O0 \
 	-std=c++20 \
 	-fmodules-ts \
 	-Wall \
@@ -58,8 +60,10 @@ LDFLAGS=\
 	-lglfw
 
 SRCS=\
+	src/dimensions.cc \
 	src/engine.cc \
 	src/engine_impl.cc \
+	src/event_service.cc \
 	src/window.cc \
 	src/window_impl.cc
 
@@ -73,10 +77,10 @@ all: elysian
 lint: tidy
 
 tidy: $(HDRS) $(SRCS)
-	$(TIDY) -header-filter=src/.* $(SRCS) -- -x c++ $(CFLAGS)
+	$(TIDY) -header-filter=src/.* $(SRCS) src/main.cc -- -x c++ $(CFLAGS)
 
 fmt: $(HDRS) $(SRCS)
-	$(FMT) -i $(HDRS) $(SRCS)
+	$(FMT) -i $(HDRS) $(SRCS) src/main.cc
 
 %.o: %.cc %.h
 	$(CC) $(CFLAGS) $< -c -o $@
