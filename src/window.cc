@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <span>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
@@ -14,16 +15,17 @@ namespace el {
 
 Window::Window(const WindowConfig& config)
     : event_service_(config.event_service()) {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   assert(event_service_ != nullptr);
 
   glfwSetErrorCallback([](int error, const char* desc) {
     std::cerr << "Err: " << error << ": " << desc << std::endl;
   });
 
-  if (!glfwInit()) {
+  if (glfwInit() == 0) {
     throw std::runtime_error("GLFW initialization failed.");
   }
-  if (!glfwVulkanSupported()) {
+  if (glfwVulkanSupported() == 0) {
     throw std::runtime_error("GLFW vulkan support missing.");
   }
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -31,7 +33,7 @@ Window::Window(const WindowConfig& config)
   window_ = glfwCreateWindow(static_cast<int>(config.width()),
                              static_cast<int>(config.height()),
                              config.title().data(), nullptr, nullptr);
-  if (!window_) {
+  if (window_ == nullptr) {
     throw std::runtime_error("GLFW window creation failed.");
   }
 
@@ -48,6 +50,7 @@ Window::~Window() {
   glfwTerminate();
 }
 
+// static
 auto Window::required_engine_extensions() -> std::vector<const char*> {
   uint32_t glfw_ext_count = 0;
   const char** glfw_exts = glfwGetRequiredInstanceExtensions(&glfw_ext_count);
@@ -55,7 +58,8 @@ auto Window::required_engine_extensions() -> std::vector<const char*> {
     throw std::runtime_error("GLFW error retrieving instance extensions");
   }
 
-  return std::vector<const char*>(glfw_exts, glfw_exts + glfw_ext_count);
+  std::span exts(glfw_exts, glfw_ext_count);
+  return {std::begin(exts), std::end(exts)};
 }
 
 auto Window::dimensions() const -> Dimensions {

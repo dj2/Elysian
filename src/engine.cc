@@ -223,7 +223,9 @@ Device::Device(const DeviceConfig& config)
     : dimensions_cb_(config.dimensions_cb()),
       event_service_(config.event_service()),
       enable_validation_(config.enable_validation()) {
-  assert(dimensions_cb_ != nullptr);
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+  assert(dimensions_cb_);
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   assert(event_service_ != nullptr);
 
   build_instance(config);
@@ -245,10 +247,12 @@ void Device::check_validation_available_if_needed() const {
   vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
 
   auto has_layer = [&layers](std::string_view name) noexcept {
-    return std::any_of(std::begin(layers), std::end(layers),
-                       [name](const auto& prop) noexcept {
-                         return name.compare(prop.layerName) == 0;
-                       });
+    return std::any_of(
+        std::begin(layers), std::end(layers),
+        [name](const auto& prop) noexcept {
+          std::string_view layer_name(static_cast<const char*>(prop.layerName));
+          return name.compare(layer_name) == 0;
+        });
   };
 
   if (!std::all_of(std::begin(kValidationLayers), std::end(kValidationLayers),

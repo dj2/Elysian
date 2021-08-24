@@ -18,7 +18,7 @@ using EventCallback = std::function<void(const Event*)>;
 
 class EventService {
  public:
-  auto add(EventType event, EventCallback cb) -> void {
+  auto add(EventType event, const EventCallback& cb) -> void {
     auto it = listeners_.find(event);
     if (it == listeners_.end()) {
       std::vector<EventCallback> vec = {cb};
@@ -37,7 +37,7 @@ class EventService {
 
     auto& vec = it->second;
     std::for_each(std::begin(vec), std::end(vec),
-                  [data](EventCallback cb) { cb(data); });
+                  [data](const EventCallback& cb) { cb(data); });
   }
 
  private:

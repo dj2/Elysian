@@ -45,10 +45,15 @@ class WindowConfig {
 class Window {
  public:
   explicit Window(const WindowConfig& config);
+  Window(const Window&) = delete;
+  Window(const Window&&) = delete;
   ~Window();
 
+  auto operator=(const Window&) -> Window& = delete;
+  auto operator=(const Window&&) -> Window& = delete;
+
   // Returned strings are owned by the window system and will be free'd.
-  auto required_engine_extensions() -> std::vector<const char*>;
+  static auto required_engine_extensions() -> std::vector<const char*>;
 
   [[nodiscard]] auto shouldClose() const -> bool {
     return glfwWindowShouldClose(window_) != 0;
@@ -60,7 +65,7 @@ class Window {
 
  private:
   GLFWwindow* window_ = nullptr;
-  EventService* event_service_;
+  EventService* event_service_ = nullptr;
 };
 
 }  // namespace el

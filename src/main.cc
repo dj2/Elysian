@@ -5,13 +5,17 @@
 #include "src/event_service.h"
 #include "src/window.h"
 
+constexpr uint32_t kDefaultWidth = 1024;
+constexpr uint32_t kDefaultHeight = 768;
+
 auto main() -> int {
   el::EventService event_service;
 
-  el::Window window(el::WindowConfig()
-                        .set_title("Elysian")
-                        .set_dimensions({.width = 1024, .height = 768})
-                        .set_event_service(&event_service));
+  el::Window window(
+      el::WindowConfig()
+          .set_title("Elysian")
+          .set_dimensions({.width = kDefaultWidth, .height = kDefaultHeight})
+          .set_event_service(&event_service));
 
   el::engine::ErrorData err_data{
       .cb =
@@ -27,7 +31,7 @@ auto main() -> int {
           .set_app_version(0, 1, 0)
           .set_enable_validation()
           .set_error_data(&err_data)
-          .set_device_extensions(window.required_engine_extensions())
+          .set_device_extensions(el::Window::required_engine_extensions())
           .set_event_service(&event_service)
           .set_dimensions_cb(
               [&window]() -> el::Dimensions { return window.dimensions(); }));

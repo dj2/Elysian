@@ -55,8 +55,10 @@ struct PhysicalDevice {
 class VersionInfo {
  public:
   VersionInfo() = default;
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   VersionInfo(uint32_t variant, uint32_t major, uint32_t minor, uint32_t patch)
       : variant_(variant), major_(major), minor_(minor), patch_(patch) {}
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   VersionInfo(uint32_t major, uint32_t minor, uint32_t patch)
       : VersionInfo(0, major, minor, patch) {}
 
@@ -156,7 +158,7 @@ class Device {
   void pick_physical_device();
   void build_instance(const DeviceConfig& config);
 
-  DimensionsCallback dimensions_cb_ = nullptr;
+  DimensionsCallback dimensions_cb_;
   EventService* event_service_ = nullptr;
 
   VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
