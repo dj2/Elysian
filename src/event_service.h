@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -19,6 +20,8 @@ using EventCallback = std::function<void(const Event*)>;
 class EventService {
  public:
   auto add(EventType event, const EventCallback& cb) -> void {
+    const std::lock_guard<std::mutex> lock(lock_);
+
     auto it = listeners_.find(event);
     if (it == listeners_.end()) {
       std::vector<EventCallback> vec = {cb};
@@ -30,6 +33,8 @@ class EventService {
   }
 
   auto emit(EventType event, const Event* data) -> void {
+    const std::lock_guard<std::mutex> lock(lock_);
+
     auto it = listeners_.find(event);
     if (it == listeners_.end()) {
       return;
@@ -42,6 +47,7 @@ class EventService {
 
  private:
   std::unordered_map<EventType, std::vector<EventCallback>> listeners_;
+  std::mutex lock_;
 };
 
 }  // namespace el
