@@ -57,4 +57,4 @@ elysian: $(SRCS) $(HDRS) src/main.cc
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRCS) $(LDFLAGS) src/main.cc -o elysian
 
 clean:
-	rm -rf elysian *.o
+	rm -rf elysian *.o *.dSYM
