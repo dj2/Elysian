@@ -227,12 +227,19 @@ Device::Device(const DeviceConfig& config)
   // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   assert(event_service_ != nullptr);
 
-  build_instance(config);
+  auto create_surface = config.surface_cb();
+
+  create_instance(config);
+  pick_physical_device();
+  create_surface(*this);
+  pick_logical_device();
 
   event_service_->add(
       el::EventType::kResized,
       [this](const el::Event* /*evt*/) -> void { this->set_resized(); });
 }
+
+auto Device::pick_logical_device() -> void {}
 
 void Device::check_validation_available_if_needed() const {
   if (!enable_validation_) {
@@ -299,7 +306,7 @@ void Device::setup_debug_handler_if_needed(
   }
 }
 
-static auto is_device_suitable(VkPhysicalDevice /* unused */) -> bool {
+static auto is_device_suitable(VkPhysicalDevice /*unused*/) -> bool {
   return true;
 }
 
@@ -324,7 +331,7 @@ void Device::pick_physical_device() {
   physical_device_.device = *iter;
 }
 
-void Device::build_instance(const DeviceConfig& config) {
+void Device::create_instance(const DeviceConfig& config) {
   check_validation_available_if_needed();
 
   auto exts = config.device_extensions();
@@ -348,7 +355,6 @@ void Device::build_instance(const DeviceConfig& config) {
   }
 
   setup_debug_handler_if_needed(&debug_create_info);
-  pick_physical_device();
 }
 
 }  // namespace el::engine

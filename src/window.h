@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "src/dimensions.h"
+#include "src/engine.h"
 #include "src/event_service.h"
 #include "src/glfw3.h"
 
@@ -62,6 +63,8 @@ class Window {
   [[nodiscard]] auto dimensions() const -> Dimensions;
 
   auto static Poll() -> void { glfwPollEvents(); }
+
+  auto create_surface(engine::Device& device) -> void;
 
  private:
   GLFWwindow* window_ = nullptr;

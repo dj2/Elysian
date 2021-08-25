@@ -1,6 +1,7 @@
 #include "src/window.h"
 
 #include <cassert>
+#include <format>
 #include <iostream>
 #include <span>
 #include <stdexcept>
@@ -71,6 +72,20 @@ auto Window::dimensions() const -> Dimensions {
       .width = static_cast<uint32_t>(w),
       .height = static_cast<uint32_t>(h),
   };
+}
+
+auto Window::create_surface(engine::Device& device) -> void {
+  device.create_surface([&](VkInstance instance) -> VkSurfaceKHR {
+    VkSurfaceKHR surface = {};
+
+    VkResult r =
+        glfwCreateWindowSurface(instance, this->window_, nullptr, &surface);
+    if (r != VK_SUCCESS) {
+      throw std::runtime_error(std::string("glfwCreateWindowSurface: ") +
+                               std::to_string(r));
+    }
+    return surface;
+  });
 }
 
 }  // namespace el

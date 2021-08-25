@@ -34,7 +34,9 @@ auto main() -> int {
           .set_device_extensions(el::Window::required_engine_extensions())
           .set_event_service(&event_service)
           .set_dimensions_cb(
-              [&window]() -> el::Dimensions { return window.dimensions(); }));
+              [&window]() -> el::Dimensions { return window.dimensions(); })
+          .set_surface_cb(
+              [&window](el::engine::Device& d) { window.create_surface(d); }));
 
   while (!window.shouldClose()) {
     el::Window::Poll();

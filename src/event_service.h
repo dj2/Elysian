@@ -9,7 +9,10 @@
 
 namespace el {
 
-enum class EventType { kResized };
+enum class EventType {
+  kResized,
+  kKey,
+};
 
 struct Event {};
 

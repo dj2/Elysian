@@ -46,6 +46,8 @@ lint: tidy
 tidy: $(HDRS) $(SRCS)
 	$(TIDY) --fix -header-filter="src/*\.h$$" $(SRCS) src/main.cc -- -x c++ $(CFLAGS)
 
+format: fmt
+
 fmt: $(HDRS) $(SRCS)
 	$(FMT) -i $(HDRS) $(SRCS) src/main.cc
 

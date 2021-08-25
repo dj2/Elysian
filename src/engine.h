@@ -74,6 +74,9 @@ class VersionInfo {
   uint32_t patch_ = 0;
 };
 
+class Device;
+using SurfaceCallback = std::function<void(Device&)>;
+
 class DeviceConfig {
  public:
   auto set_enable_validation() -> DeviceConfig& {
@@ -108,6 +111,11 @@ class DeviceConfig {
     return *this;
   }
 
+  auto set_surface_cb(SurfaceCallback cb) -> DeviceConfig& {
+    surface_cb_ = std::move(cb);
+    return *this;
+  }
+
   auto set_event_service(EventService* event_service) -> DeviceConfig& {
     event_service_ = event_service;
     return *this;
@@ -125,6 +133,9 @@ class DeviceConfig {
   [[nodiscard]] auto dimensions_cb() const -> DimensionsCallback {
     return dimensions_cb_;
   }
+  [[nodiscard]] auto surface_cb() const -> SurfaceCallback {
+    return surface_cb_;
+  }
   [[nodiscard]] auto event_service() const -> EventService* {
     return event_service_;
   }
@@ -135,17 +146,24 @@ class DeviceConfig {
   std::vector<const char*> device_extensions_ = {};
   VersionInfo version_ = {};
   DimensionsCallback dimensions_cb_;
+  SurfaceCallback surface_cb_;
   EventService* event_service_ = nullptr;
 
   bool enable_validation_ = false;
   EL_PAD(7);
 };
 
+using SurfaceCreateCallback = std::function<VkSurfaceKHR(VkInstance)>;
+
 class Device {
  public:
   explicit Device(const DeviceConfig& config);
 
   auto set_resized() -> void { framebuffer_resized_ = true; }
+
+  auto create_surface(SurfaceCreateCallback cb) -> void {
+    surface_ = cb(instance_);
+  }
 
  private:
   // [[nodiscard]] auto is_device_suitable(VkPhysicalDevice device) const ->
@@ -155,17 +173,21 @@ class Device {
       -> VkDebugUtilsMessengerCreateInfoEXT;
   void setup_debug_handler_if_needed(
       VkDebugUtilsMessengerCreateInfoEXT* debug_create_info);
+  void create_instance(const DeviceConfig& config);
   void pick_physical_device();
-  void build_instance(const DeviceConfig& config);
+  void pick_logical_device();
 
   DimensionsCallback dimensions_cb_;
   EventService* event_service_ = nullptr;
 
-  VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
-
-  PhysicalDevice physical_device_ = {};
-
   VkInstance instance_ = {};
+  VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
+  PhysicalDevice physical_device_ = {};
+  // VkDevice device_ = nullptr;
+  VkSurfaceKHR surface_ = nullptr;
+  // VkQueue graphics_queue_ = nullptr;
+  // VkQueue present_queue_ = nullptr;
+
   bool enable_validation_ = false;
   bool framebuffer_resized_ = false;
 
