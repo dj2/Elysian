@@ -25,12 +25,15 @@ LDFLAGS=\
 	-lglfw
 
 SRCS=\
-	src/engine.cc \
+	src/engine/device.cc \
 	src/window.cc
 
 HDRS=\
 	src/dimensions.h \
 	src/engine.h \
+	src/engine/device.h \
+	src/engine/error.h \
+	src/engine/version.h \
 	src/event_service.h \
 	src/glfw3.h \
 	src/pad.h \
