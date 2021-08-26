@@ -135,13 +135,15 @@ auto check_device_extensions_supported(VkPhysicalDevice device) -> bool {
 
   std::unordered_set<std::string> required_exts(std::begin(kDeviceExtensions),
                                                 std::end(kDeviceExtensions));
-  el::ranges::for_each(exts, [&required_exts](const VkExtensionProperties prop) {
-      required_exts.erase(prop.extensionName);
-  });
+  el::ranges::for_each(
+      exts, [&required_exts](const VkExtensionProperties prop) {
+        required_exts.erase(static_cast<const char*>(prop.extensionName));
+      });
   return required_exts.empty();
 }
 
-auto is_device_suitable(const DeviceConfig& config, VkPhysicalDevice device) -> bool {
+auto is_device_suitable(const DeviceConfig& config, VkPhysicalDevice device)
+    -> bool {
   VkPhysicalDeviceProperties props = {};
   vkGetPhysicalDeviceProperties(device, &props);
   if (props.apiVersion < config.version().to_vk()) {

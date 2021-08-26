@@ -60,7 +60,7 @@ fmt: $(HDRS) $(SRCS) src/main.cc
 	$(CC) $(CFLAGS) $< -c -o $@
 
 elysian: $(SRCS) $(HDRS) src/main.cc
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SRCS) $(LDFLAGS) src/main.cc -o elysian
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SRCS) $(LDFLAGS) src/main.cc -o $@
 
 clean:
 	rm -rf elysian *.o *.dSYM

@@ -165,6 +165,10 @@ auto to_string(const VkObjectType type) -> std::string_view {
       return "indirect_commands_layout";
     case VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT:
       return "private_data_slot";
+    case VK_OBJECT_TYPE_CU_MODULE_NVX:
+      return "cu_module_nvx";
+    case VK_OBJECT_TYPE_CU_FUNCTION_NVX:
+      return "cu_function_nvx";
     case VK_OBJECT_TYPE_UNKNOWN:
     case VK_OBJECT_TYPE_MAX_ENUM:
       return "unknown";
