@@ -61,30 +61,33 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
       msg_buf << "Queues:" << std::endl;
 
       std::span queues(data->pQueueLabels, data->queueLabelCount);
-      std::for_each(std::begin(queues), std::end(queues), [&msg_buf](const auto& label) {
-        msg_buf << "  " << label.pLabelName << std::endl;
-      });
+      std::for_each(std::begin(queues), std::end(queues),
+                    [&msg_buf](const auto& label) {
+                      msg_buf << "  " << label.pLabelName << std::endl;
+                    });
     }
     if (data->cmdBufLabelCount > 0) {
       msg_buf << "Command Buffers:" << std::endl;
 
       std::span cmdBufLabels(data->pCmdBufLabels, data->cmdBufLabelCount);
-      std::for_each(std::begin(cmdBufLabels), std::end(cmdBufLabels), [&msg_buf](const auto& buf) {
-        msg_buf << "  " << buf.pLabelName << std::endl;
-      });
+      std::for_each(std::begin(cmdBufLabels), std::end(cmdBufLabels),
+                    [&msg_buf](const auto& buf) {
+                      msg_buf << "  " << buf.pLabelName << std::endl;
+                    });
     }
     if (data->objectCount > 0) {
       msg_buf << "Objects:" << std::endl;
 
       std::span objects(data->pObjects, data->objectCount);
-      std::for_each(std::begin(objects), std::end(objects), [&msg_buf](const auto& obj) {
-        msg_buf << "  " << to_string(obj.objectType);
-        msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
-        if (obj.pObjectName) {
-          msg_buf << " " << obj.pObjectName;
-        }
-        msg_buf << std::endl;
-      });
+      std::for_each(std::begin(objects), std::end(objects),
+                    [&msg_buf](const auto& obj) {
+                      msg_buf << "  " << to_string(obj.objectType);
+                      msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
+                      if (obj.pObjectName) {
+                        msg_buf << " " << obj.pObjectName;
+                      }
+                      msg_buf << std::endl;
+                    });
     }
 
     err_data->cb({
@@ -135,7 +138,8 @@ auto check_device_extensions_supported(VkPhysicalDevice device) -> bool {
   std::unordered_set<std::string> required_exts(std::begin(kDeviceExtensions),
                                                 std::end(kDeviceExtensions));
   std::for_each(
-      std::begin(exts), std::end(exts), [&required_exts](const VkExtensionProperties prop) {
+      std::begin(exts), std::end(exts),
+      [&required_exts](const VkExtensionProperties prop) {
         required_exts.erase(static_cast<const char*>(prop.extensionName));
       });
   return required_exts.empty();
@@ -192,13 +196,16 @@ void Device::check_validation_available_if_needed() const {
   vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
 
   auto has_layer = [&layers](std::string_view name) noexcept {
-    return std::any_of(std::begin(layers), std::end(layers), [name](const auto& prop) noexcept {
-      std::string_view layer_name(static_cast<const char*>(prop.layerName));
-      return name.compare(layer_name) == 0;
-    });
+    return std::any_of(
+        std::begin(layers), std::end(layers),
+        [name](const auto& prop) noexcept {
+          std::string_view layer_name(static_cast<const char*>(prop.layerName));
+          return name.compare(layer_name) == 0;
+        });
   };
 
-  if (!std::all_of(std::begin(kValidationLayers), std::end(kValidationLayers), has_layer)) {
+  if (!std::all_of(std::begin(kValidationLayers), std::end(kValidationLayers),
+                   has_layer)) {
     throw std::runtime_error("Validation layer not available");
   }
 }

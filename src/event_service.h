@@ -44,7 +44,8 @@ class EventService {
     }
 
     auto& vec = it->second;
-    std::for_each(std::begin(vec), std::end(vec), [data](const EventCallback& cb) { cb(data); });
+    std::for_each(std::begin(vec), std::end(vec),
+                  [data](const EventCallback& cb) { cb(data); });
   }
 
  private:
