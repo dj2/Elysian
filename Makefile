@@ -12,6 +12,7 @@ CFLAGS=\
 	-Wextra \
 	-Wno-c++98-compat \
 	-Wno-c++98-compat-pedantic \
+	-Wno-poison-system-directories \
 	-pedantic \
 	-pedantic-errors \
 	-I. \
@@ -30,7 +31,6 @@ SRCS=\
 	src/window.cc
 
 HDRS=\
-	src/algorithm.h \
 	src/dimensions.h \
 	src/engine.h \
 	src/engine/device.h \

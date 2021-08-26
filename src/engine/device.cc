@@ -9,7 +9,6 @@
 #include <stdexcept>
 #include <unordered_set>
 
-#include "src/algorithm.h"
 #include "src/dimensions.h"
 #include "src/engine/vk.h"
 #include "src/event_service.h"
@@ -62,7 +61,7 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
       msg_buf << "Queues:" << std::endl;
 
       std::span queues(data->pQueueLabels, data->queueLabelCount);
-      el::ranges::for_each(queues, [&msg_buf](const auto& label) {
+      std::for_each(std::begin(queues), std::end(queues), [&msg_buf](const auto& label) {
         msg_buf << "  " << label.pLabelName << std::endl;
       });
     }
@@ -70,7 +69,7 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
       msg_buf << "Command Buffers:" << std::endl;
 
       std::span cmdBufLabels(data->pCmdBufLabels, data->cmdBufLabelCount);
-      el::ranges::for_each(cmdBufLabels, [&msg_buf](const auto& buf) {
+      std::for_each(std::begin(cmdBufLabels), std::end(cmdBufLabels), [&msg_buf](const auto& buf) {
         msg_buf << "  " << buf.pLabelName << std::endl;
       });
     }
@@ -78,7 +77,7 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
       msg_buf << "Objects:" << std::endl;
 
       std::span objects(data->pObjects, data->objectCount);
-      el::ranges::for_each(objects, [&msg_buf](const auto& obj) {
+      std::for_each(std::begin(objects), std::end(objects), [&msg_buf](const auto& obj) {
         msg_buf << "  " << to_string(obj.objectType);
         msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
         if (obj.pObjectName) {
@@ -135,8 +134,8 @@ auto check_device_extensions_supported(VkPhysicalDevice device) -> bool {
 
   std::unordered_set<std::string> required_exts(std::begin(kDeviceExtensions),
                                                 std::end(kDeviceExtensions));
-  el::ranges::for_each(
-      exts, [&required_exts](const VkExtensionProperties prop) {
+  std::for_each(
+      std::begin(exts), std::end(exts), [&required_exts](const VkExtensionProperties prop) {
         required_exts.erase(static_cast<const char*>(prop.extensionName));
       });
   return required_exts.empty();
@@ -193,13 +192,13 @@ void Device::check_validation_available_if_needed() const {
   vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
 
   auto has_layer = [&layers](std::string_view name) noexcept {
-    return el::ranges::any_of(layers, [name](const auto& prop) noexcept {
+    return std::any_of(std::begin(layers), std::end(layers), [name](const auto& prop) noexcept {
       std::string_view layer_name(static_cast<const char*>(prop.layerName));
       return name.compare(layer_name) == 0;
     });
   };
 
-  if (!el::ranges::all_of(kValidationLayers, has_layer)) {
+  if (!std::all_of(std::begin(kValidationLayers), std::end(kValidationLayers), has_layer)) {
     throw std::runtime_error("Validation layer not available");
   }
 }
@@ -257,7 +256,7 @@ void Device::pick_physical_device(const DeviceConfig& config) {
   auto is_suitable = [&](const auto& device) noexcept {
     return is_device_suitable(config, device);
   };
-  auto iter = el::ranges::find_if(devices, is_suitable);
+  auto iter = std::find_if(std::begin(devices), std::end(devices), is_suitable);
   if (iter == devices.end()) {
     throw std::runtime_error("No suitable GPUs found");
   }
