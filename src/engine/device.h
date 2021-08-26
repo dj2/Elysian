@@ -106,6 +106,7 @@ class DeviceConfig {
 class Device {
  public:
   explicit Device(const DeviceConfig& config);
+  ~Device();
 
   auto set_resized() -> void { framebuffer_resized_ = true; }
 
@@ -114,8 +115,6 @@ class Device {
   }
 
  private:
-  // [[nodiscard]] auto is_device_suitable(const DeviceConfig& config,
-  // VkPhysicalDevice device) const -> bool;
   void check_validation_available_if_needed() const;
   [[nodiscard]] auto build_debug_create_info(const DeviceConfig& config) const
       -> VkDebugUtilsMessengerCreateInfoEXT;
@@ -123,7 +122,8 @@ class Device {
       VkDebugUtilsMessengerCreateInfoEXT* debug_create_info);
   void create_instance(const DeviceConfig& config);
   void pick_physical_device(const DeviceConfig& config);
-  void pick_logical_device();
+  void create_logical_device();
+  void create_command_pool();
 
   DimensionsCallback dimensions_cb_;
   EventService* event_service_ = nullptr;
@@ -131,10 +131,12 @@ class Device {
   VkInstance instance_ = {};
   VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
   PhysicalDevice physical_device_ = {};
-  // VkDevice device_ = nullptr;
+  VkDevice device_ = nullptr;
   VkSurfaceKHR surface_ = nullptr;
-  // VkQueue graphics_queue_ = nullptr;
-  // VkQueue present_queue_ = nullptr;
+  VkQueue graphics_queue_ = nullptr;
+  VkQueue compute_queue_ = nullptr;
+  VkQueue transfer_queue_ = nullptr;
+  VkQueue present_queue_ = nullptr;
 
   bool enable_validation_ = false;
   bool framebuffer_resized_ = false;

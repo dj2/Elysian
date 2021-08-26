@@ -27,6 +27,8 @@ struct SwapChainSupportDetails {
 
 struct QueueFamilyIndices {
   std::optional<uint32_t> graphics_family;
+  std::optional<uint32_t> compute_family;
+  std::optional<uint32_t> transfer_family;
   std::optional<uint32_t> present_family;
 };
 
@@ -34,6 +36,9 @@ const char* const kEngineName = "Elysian Engine";
 constexpr uint8_t kEngineMajor = 0;
 constexpr uint8_t kEngineMinor = 1;
 constexpr uint8_t kEnginePatch = 0;
+
+constexpr uint32_t kQueueFamilyBits =
+    VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
 
 constexpr std::array<const char*, 1> kValidationLayers = {
     {"VK_LAYER_KHRONOS_validation"}};
@@ -155,9 +160,23 @@ auto find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
                                            queue_families.data());
 
   uint32_t i = 0;
+  std::vector<uint32_t> scores(queue_family_count);
   auto check_queue = [&](const VkQueueFamilyProperties props) {
-    if ((props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0U) {
+    scores[i] = props.queueFlags & kQueueFamilyBits;
+    if ((props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0U &&
+        (!indices.graphics_family.has_value() ||
+         scores[i] < scores[indices.graphics_family.value()])) {
       indices.graphics_family = i;
+    }
+    if ((props.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0U &&
+        (!indices.compute_family.has_value() ||
+         scores[i] < scores[indices.compute_family.value()])) {
+      indices.compute_family = i;
+    }
+    if ((props.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0U &&
+        (!indices.transfer_family.has_value() ||
+         scores[i] < scores[indices.transfer_family.value()])) {
+      indices.transfer_family = i;
     }
 
     VkBool32 present_support = VK_FALSE;
@@ -167,6 +186,8 @@ auto find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
     }
 
     if (indices.graphics_family.has_value() &&
+        indices.compute_family.has_value() &&
+        indices.transfer_family.has_value() &&
         indices.present_family.has_value()) {
       return true;
     }
@@ -256,14 +277,78 @@ Device::Device(const DeviceConfig& config)
   create_instance(config);
   create_surface(*this);
   pick_physical_device(config);
-  pick_logical_device();
+  create_logical_device();
+  create_command_pool();
 
   event_service_->add(
       el::EventType::kResized,
       [this](const el::Event* /*evt*/) -> void { this->set_resized(); });
 }
 
-auto Device::pick_logical_device() -> void {}
+Device::~Device() {
+  vkDestroyDevice(device_, nullptr);
+  vkDestroySurfaceKHR(instance_, surface_, nullptr);
+
+  auto vkDestroyDebugUtilsMessengerEXT =
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+      reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+          vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
+  if (vkDestroyDebugUtilsMessengerEXT) {
+    vkDestroyDebugUtilsMessengerEXT(instance_, debug_handler_, nullptr);
+  }
+
+  vkDestroyInstance(instance_, nullptr);
+}
+
+auto Device::create_logical_device() -> void {
+  auto indices = find_queue_families(physical_device_.device, surface_);
+
+  std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+  std::unordered_set<uint32_t> unique_queue_families = {
+      indices->graphics_family.value(), indices->compute_family.value(),
+      indices->transfer_family.value(), indices->present_family.value()};
+  float priority = 1.0F;
+  std::for_each(std::begin(unique_queue_families),
+                std::end(unique_queue_families), [&](uint32_t idx) {
+                  queue_create_infos.push_back(
+                      {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                       .queueFamilyIndex = idx,
+                       .queueCount = 1,
+                       .pQueuePriorities = &priority});
+                });
+
+  VkPhysicalDeviceFeatures device_features{};
+  VkDeviceCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .queueCreateInfoCount = uint32_t(queue_create_infos.size()),
+      .pQueueCreateInfos = queue_create_infos.data(),
+      .enabledLayerCount = 0,
+      .ppEnabledLayerNames = nullptr,
+      .enabledExtensionCount = kDeviceExtensions.size(),
+      .ppEnabledExtensionNames = kDeviceExtensions.data(),
+      .pEnabledFeatures = &device_features,
+  };
+
+  auto res =
+      vkCreateDevice(physical_device_.device, &create_info, nullptr, &device_);
+  if (res != VK_SUCCESS) {
+    throw std::runtime_error(
+        std::string("Failed to create device: ").append(to_string(res)));
+  }
+
+  vkGetDeviceQueue(device_, indices->graphics_family.value(), 0,
+                   &graphics_queue_);
+  vkGetDeviceQueue(device_, indices->compute_family.value(), 0,
+                   &compute_queue_);
+  vkGetDeviceQueue(device_, indices->transfer_family.value(), 0,
+                   &transfer_queue_);
+  vkGetDeviceQueue(device_, indices->present_family.value(), 0,
+                   &present_queue_);
+}
+
+auto Device::create_command_pool() -> void {
+
+}
 
 void Device::check_validation_available_if_needed() const {
   if (!enable_validation_) {
