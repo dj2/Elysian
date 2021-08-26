@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <span>
 #include <sstream>
 #include <stdexcept>
@@ -12,9 +13,22 @@
 #include "src/dimensions.h"
 #include "src/engine/vk.h"
 #include "src/event_service.h"
+#include "src/pad.h"
 
 namespace el::engine {
 namespace {
+
+struct SwapChainSupportDetails {
+  VkSurfaceCapabilitiesKHR capabilities{};
+  EL_PAD(4);
+  std::vector<VkSurfaceFormatKHR> formats;
+  std::vector<VkPresentModeKHR> present_modes;
+};
+
+struct QueueFamilyIndices {
+  std::optional<uint32_t> graphics_family;
+  std::optional<uint32_t> present_family;
+};
 
 const char* const kEngineName = "Elysian Engine";
 constexpr uint8_t kEngineMajor = 0;
@@ -128,6 +142,75 @@ auto build_instance_create_info(VkApplicationInfo* app_info,
   };
 }
 
+auto find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
+    -> std::optional<QueueFamilyIndices> {
+  QueueFamilyIndices indices;
+
+  uint32_t queue_family_count = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
+                                           nullptr);
+
+  std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
+                                           queue_families.data());
+
+  uint32_t i = 0;
+  auto check_queue = [&](const VkQueueFamilyProperties props) {
+    if ((props.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0U) {
+      indices.graphics_family = i;
+    }
+
+    VkBool32 present_support = VK_FALSE;
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
+    if (present_support != VK_FALSE) {
+      indices.present_family = i;
+    }
+
+    if (indices.graphics_family.has_value() &&
+        indices.present_family.has_value()) {
+      return true;
+    }
+
+    i += 1;
+    return false;
+  };
+
+  if (std::any_of(std::begin(queue_families), std::end(queue_families),
+                  check_queue)) {
+    return {indices};
+  }
+  return {};
+}
+
+auto query_swap_chain_support(VkPhysicalDevice device, VkSurfaceKHR surface)
+    -> std::optional<SwapChainSupportDetails> {
+  SwapChainSupportDetails details;
+
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
+                                            &details.capabilities);
+
+  uint32_t format_count = 0;
+  vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, nullptr);
+  if (format_count != 0) {
+    details.formats.resize(format_count);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count,
+                                         details.formats.data());
+  }
+
+  uint32_t present_mode_count = 0;
+  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+                                            &present_mode_count, nullptr);
+  if (present_mode_count != 0) {
+    details.present_modes.resize(present_mode_count);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(
+        device, surface, &present_mode_count, details.present_modes.data());
+  }
+  if (!details.formats.empty() && !details.present_modes.empty()) {
+    return {details};
+  }
+  return {};
+}
+
 auto check_device_extensions_supported(VkPhysicalDevice device) -> bool {
   uint32_t count = 0;
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
@@ -145,18 +228,16 @@ auto check_device_extensions_supported(VkPhysicalDevice device) -> bool {
   return required_exts.empty();
 }
 
-auto is_device_suitable(const DeviceConfig& config, VkPhysicalDevice device)
-    -> bool {
+auto is_device_suitable(const DeviceConfig& config,
+                        VkPhysicalDevice device,
+                        VkSurfaceKHR surface) -> bool {
   VkPhysicalDeviceProperties props = {};
   vkGetPhysicalDeviceProperties(device, &props);
-  if (props.apiVersion < config.version().to_vk()) {
-    return false;
-  }
-  if (!check_device_extensions_supported(device)) {
-    return false;
-  }
 
-  return true;
+  return props.apiVersion >= config.version().to_vk() &&
+         check_device_extensions_supported(device) &&
+         query_swap_chain_support(device, surface) &&
+         find_queue_families(device, surface);
 }
 
 }  // namespace
@@ -173,8 +254,8 @@ Device::Device(const DeviceConfig& config)
   auto create_surface = config.surface_cb();
 
   create_instance(config);
-  pick_physical_device(config);
   create_surface(*this);
+  pick_physical_device(config);
   pick_logical_device();
 
   event_service_->add(
@@ -261,7 +342,7 @@ void Device::pick_physical_device(const DeviceConfig& config) {
   vkEnumeratePhysicalDevices(instance_, &count, devices.data());
 
   auto is_suitable = [&](const auto& device) noexcept {
-    return is_device_suitable(config, device);
+    return is_device_suitable(config, device, surface_);
   };
   auto iter = std::find_if(std::begin(devices), std::end(devices), is_suitable);
   if (iter == devices.end()) {
