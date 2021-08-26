@@ -1,7 +1,6 @@
 #include "src/window.h"
 
 #include <cassert>
-#include <format>
 #include <iostream>
 #include <span>
 #include <stdexcept>
@@ -9,6 +8,7 @@
 #include <vector>
 
 #include "src/dimensions.h"
+#include "src/engine/vk.h"
 #include "src/event_service.h"
 #include "src/glfw3.h"
 
@@ -79,11 +79,11 @@ auto Window::create_surface(engine::Device& device) -> void {
   device.create_surface([&](VkInstance instance) -> VkSurfaceKHR {
     VkSurfaceKHR surface = {};
 
-    VkResult r =
+    auto res =
         glfwCreateWindowSurface(instance, this->window_, nullptr, &surface);
-    if (r != VK_SUCCESS) {
-      throw std::runtime_error(std::string("glfwCreateWindowSurface: ") +
-                               std::to_string(r));
+    if (res != VK_SUCCESS) {
+      throw std::runtime_error(
+          std::string("glfwCreateWindowSurface: ").append(to_string(res)));
     }
     return surface;
   });

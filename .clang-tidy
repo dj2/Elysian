@@ -3,6 +3,8 @@ Checks: "\
   *,\
   -altera-*,\
   -fuchsia-default-arguments-calls,\
+  -fuchsia-default-arguments-declarations,\
+  -fuchsia-overloaded-operator,\
   -fuchsia-trailing-return,\
   -hicpp-no-array-decay,\
   -hicpp-signed-bitwise,\

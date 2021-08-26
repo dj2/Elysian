@@ -9,9 +9,9 @@
 #include "src/dimensions.h"
 #include "src/engine/error.h"
 #include "src/engine/version.h"
+#include "src/engine/vk.h"
 #include "src/event_service.h"
 #include "src/pad.h"
-#include "src/vk.h"
 
 namespace el::engine {
 
@@ -109,20 +109,20 @@ class Device {
 
   auto set_resized() -> void { framebuffer_resized_ = true; }
 
-  auto create_surface(SurfaceCreateCallback cb) -> void {
+  auto create_surface(const SurfaceCreateCallback& cb) -> void {
     surface_ = cb(instance_);
   }
 
  private:
-  // [[nodiscard]] auto is_device_suitable(VkPhysicalDevice device) const ->
-  // bool;
+  // [[nodiscard]] auto is_device_suitable(const DeviceConfig& config,
+  // VkPhysicalDevice device) const -> bool;
   void check_validation_available_if_needed() const;
   [[nodiscard]] auto build_debug_create_info(const DeviceConfig& config) const
       -> VkDebugUtilsMessengerCreateInfoEXT;
   void setup_debug_handler_if_needed(
       VkDebugUtilsMessengerCreateInfoEXT* debug_create_info);
   void create_instance(const DeviceConfig& config);
-  void pick_physical_device();
+  void pick_physical_device(const DeviceConfig& config);
   void pick_logical_device();
 
   DimensionsCallback dimensions_cb_;

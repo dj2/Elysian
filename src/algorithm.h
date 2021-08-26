@@ -11,10 +11,8 @@ struct for_each_fn {
             std::sentinel_for<I> S,
             class Proj = std::identity,
             std::indirectly_unary_invocable<std::projected<I, Proj>> Fun>
-  constexpr for_each_result<I, Fun> operator()(I first,
-                                               S last,
-                                               Fun f,
-                                               Proj proj = {}) const {
+  constexpr auto operator()(I first, S last, Fun f, Proj proj = {}) const
+      -> for_each_result<I, Fun> {
     for (; first != last; ++first) {
       std::invoke(f, std::invoke(proj, *first));
     }
@@ -25,8 +23,8 @@ struct for_each_fn {
             class Proj = std::identity,
             std::indirectly_unary_invocable<
                 std::projected<std::ranges::iterator_t<R>, Proj>> Fun>
-  constexpr for_each_result<std::ranges::borrowed_iterator_t<R>, Fun>
-  operator()(R&& r, Fun f, Proj proj = {}) const {
+  constexpr auto operator()(R&& r, Fun f, Proj proj = {}) const
+      -> for_each_result<std::ranges::borrowed_iterator_t<R>, Fun> {
     return (*this)(std::ranges::begin(r), std::ranges::end(r), std::move(f),
                    std::ref(proj));
   }
@@ -39,7 +37,8 @@ struct all_of_fn {
             std::sentinel_for<I> S,
             class Proj = std::identity,
             std::indirect_unary_predicate<std::projected<I, Proj>> Pred>
-  constexpr bool operator()(I first, S last, Pred pred, Proj proj = {}) const {
+  constexpr auto operator()(I first, S last, Pred pred, Proj proj = {}) const
+      -> bool {
     return std::ranges::find_if_not(first, last, std::ref(pred),
                                     std::ref(proj)) == last;
   }
@@ -48,7 +47,7 @@ struct all_of_fn {
             class Proj = std::identity,
             std::indirect_unary_predicate<
                 std::projected<std::ranges::iterator_t<R>, Proj>> Pred>
-  constexpr bool operator()(R&& r, Pred pred, Proj proj = {}) const {
+  constexpr auto operator()(R&& r, Pred pred, Proj proj = {}) const -> bool {
     return operator()(std::ranges::begin(r), std::ranges::end(r),
                       std::ref(pred), std::ref(proj));
   }
@@ -60,7 +59,8 @@ struct any_of_fn {
             std::sentinel_for<I> S,
             class Proj = std::identity,
             std::indirect_unary_predicate<std::projected<I, Proj>> Pred>
-  constexpr bool operator()(I first, S last, Pred pred, Proj proj = {}) const {
+  constexpr auto operator()(I first, S last, Pred pred, Proj proj = {}) const
+      -> bool {
     return std::ranges::find_if(first, last, std::ref(pred), std::ref(proj)) !=
            last;
   }
@@ -69,7 +69,7 @@ struct any_of_fn {
             class Proj = std::identity,
             std::indirect_unary_predicate<
                 std::projected<std::ranges::iterator_t<R>, Proj>> Pred>
-  constexpr bool operator()(R&& r, Pred pred, Proj proj = {}) const {
+  constexpr auto operator()(R&& r, Pred pred, Proj proj = {}) const -> bool {
     return operator()(std::ranges::begin(r), std::ranges::end(r),
                       std::ref(pred), std::ref(proj));
   }
@@ -82,7 +82,8 @@ struct find_if_fn {
             std::sentinel_for<I> S,
             class Proj = std::identity,
             std::indirect_unary_predicate<std::projected<I, Proj>> Pred>
-  constexpr I operator()(I first, S last, Pred pred, Proj proj = {}) const {
+  constexpr auto operator()(I first, S last, Pred pred, Proj proj = {}) const
+      -> I {
     for (; first != last; ++first) {
       if (std::invoke(pred, std::invoke(proj, *first))) {
         return first;
@@ -95,8 +96,8 @@ struct find_if_fn {
             class Proj = std::identity,
             std::indirect_unary_predicate<
                 std::projected<std::ranges::iterator_t<R>, Proj>> Pred>
-  constexpr std::ranges::borrowed_iterator_t<R>
-  operator()(R&& r, Pred pred, Proj proj = {}) const {
+  constexpr auto operator()(R&& r, Pred pred, Proj proj = {}) const
+      -> std::ranges::borrowed_iterator_t<R> {
     return (*this)(std::ranges::begin(r), std::ranges::end(r), std::ref(pred),
                    std::ref(proj));
   }

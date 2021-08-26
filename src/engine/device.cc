@@ -7,11 +7,12 @@
 #include <span>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_set>
 
 #include "src/algorithm.h"
 #include "src/dimensions.h"
+#include "src/engine/vk.h"
 #include "src/event_service.h"
-#include "src/vk.h"
 
 namespace el::engine {
 namespace {
@@ -24,97 +25,8 @@ constexpr uint8_t kEnginePatch = 0;
 constexpr std::array<const char*, 1> kValidationLayers = {
     {"VK_LAYER_KHRONOS_validation"}};
 
-auto objectTypeToName(VkObjectType type) -> std::string_view {
-  switch (type) {
-    case VK_OBJECT_TYPE_INSTANCE:
-      return "instance";
-    case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
-      return "physical_device";
-    case VK_OBJECT_TYPE_DEVICE:
-      return "device";
-    case VK_OBJECT_TYPE_QUEUE:
-      return "queue";
-    case VK_OBJECT_TYPE_SEMAPHORE:
-      return "semaphore";
-    case VK_OBJECT_TYPE_COMMAND_BUFFER:
-      return "command_buffer";
-    case VK_OBJECT_TYPE_FENCE:
-      return "fence";
-    case VK_OBJECT_TYPE_DEVICE_MEMORY:
-      return "device_memory";
-    case VK_OBJECT_TYPE_BUFFER:
-      return "buffer";
-    case VK_OBJECT_TYPE_IMAGE:
-      return "image";
-    case VK_OBJECT_TYPE_EVENT:
-      return "event";
-    case VK_OBJECT_TYPE_QUERY_POOL:
-      return "query_pool";
-    case VK_OBJECT_TYPE_BUFFER_VIEW:
-      return "buffer_view";
-    case VK_OBJECT_TYPE_IMAGE_VIEW:
-      return "image_view";
-    case VK_OBJECT_TYPE_SHADER_MODULE:
-      return "shader_module";
-    case VK_OBJECT_TYPE_PIPELINE_CACHE:
-      return "pipeline_cache";
-    case VK_OBJECT_TYPE_PIPELINE_LAYOUT:
-      return "pipeline_layout";
-    case VK_OBJECT_TYPE_RENDER_PASS:
-      return "render_pass";
-    case VK_OBJECT_TYPE_PIPELINE:
-      return "pipeline";
-    case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:
-      return "descriptor_set_layout";
-    case VK_OBJECT_TYPE_SAMPLER:
-      return "sampler";
-    case VK_OBJECT_TYPE_DESCRIPTOR_POOL:
-      return "descriptor_pool";
-    case VK_OBJECT_TYPE_DESCRIPTOR_SET:
-      return "descriptor_set";
-    case VK_OBJECT_TYPE_FRAMEBUFFER:
-      return "framebuffer";
-    case VK_OBJECT_TYPE_COMMAND_POOL:
-      return "command_pool";
-    case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:
-      return "sampler_ycbcr_conversion";
-    case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE:
-      return "descriptor_update_template";
-    case VK_OBJECT_TYPE_SURFACE_KHR:
-      return "surface";
-    case VK_OBJECT_TYPE_SWAPCHAIN_KHR:
-      return "swapchain";
-    case VK_OBJECT_TYPE_DISPLAY_KHR:
-      return "display";
-    case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:
-      return "display_mode";
-    case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:
-      return "debug_report_callback";
-    case VK_OBJECT_TYPE_CU_MODULE_NVX:
-      return "cu_module";
-    case VK_OBJECT_TYPE_CU_FUNCTION_NVX:
-      return "cu_function";
-    case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT:
-      return "debug_utils_messenger";
-    case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR:
-    case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV:
-      return "acceleration_structure";
-    case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:
-      return "validation_cache";
-    case VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL:
-      return "performance_configuration";
-    case VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR:
-      return "deferred_operation";
-    case VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV:
-      return "indirect_commands_layout";
-    case VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT:
-      return "private_data_slot";
-    case VK_OBJECT_TYPE_UNKNOWN:
-    case VK_OBJECT_TYPE_MAX_ENUM:
-      return "unknown";
-  }
-  return "unknown";
-}
+constexpr std::array<const char*, 1> kDeviceExtensions = {
+    {VK_KHR_SWAPCHAIN_EXTENSION_NAME}};
 
 auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
                     VkDebugUtilsMessageTypeFlagsEXT type,
@@ -167,7 +79,7 @@ auto debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 
       std::span objects(data->pObjects, data->objectCount);
       el::ranges::for_each(objects, [&msg_buf](const auto& obj) {
-        msg_buf << "  " << objectTypeToName(obj.objectType);
+        msg_buf << "  " << to_string(obj.objectType);
         msg_buf << "(0x" << std::hex << obj.objectHandle << ")";
         if (obj.pObjectName) {
           msg_buf << " " << obj.pObjectName;
@@ -214,6 +126,34 @@ auto build_instance_create_info(VkApplicationInfo* app_info,
   };
 }
 
+auto check_device_extensions_supported(VkPhysicalDevice device) -> bool {
+  uint32_t count = 0;
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+
+  std::vector<VkExtensionProperties> exts(count);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &count, exts.data());
+
+  std::unordered_set<std::string> required_exts(std::begin(kDeviceExtensions),
+                                                std::end(kDeviceExtensions));
+  el::ranges::for_each(exts, [&required_exts](const VkExtensionProperties prop) {
+      required_exts.erase(prop.extensionName);
+  });
+  return required_exts.empty();
+}
+
+auto is_device_suitable(const DeviceConfig& config, VkPhysicalDevice device) -> bool {
+  VkPhysicalDeviceProperties props = {};
+  vkGetPhysicalDeviceProperties(device, &props);
+  if (props.apiVersion < config.version().to_vk()) {
+    return false;
+  }
+  if (!check_device_extensions_supported(device)) {
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
 Device::Device(const DeviceConfig& config)
@@ -228,7 +168,7 @@ Device::Device(const DeviceConfig& config)
   auto create_surface = config.surface_cb();
 
   create_instance(config);
-  pick_physical_device();
+  pick_physical_device(config);
   create_surface(*this);
   pick_logical_device();
 
@@ -297,15 +237,12 @@ void Device::setup_debug_handler_if_needed(
 
   auto res = func(instance_, debug_create_info, nullptr, &debug_handler_);
   if (res != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create debug handler");
+    throw std::runtime_error(
+        std::string("Failed to create debug handler: ").append(to_string(res)));
   }
 }
 
-static auto is_device_suitable(VkPhysicalDevice /*unused*/) -> bool {
-  return true;
-}
-
-void Device::pick_physical_device() {
+void Device::pick_physical_device(const DeviceConfig& config) {
   uint32_t count = 0;
   vkEnumeratePhysicalDevices(instance_, &count, nullptr);
   if (count == 0) {
@@ -316,7 +253,7 @@ void Device::pick_physical_device() {
   vkEnumeratePhysicalDevices(instance_, &count, devices.data());
 
   auto is_suitable = [&](const auto& device) noexcept {
-    return is_device_suitable(device);
+    return is_device_suitable(config, device);
   };
   auto iter = el::ranges::find_if(devices, is_suitable);
   if (iter == devices.end()) {
@@ -346,7 +283,8 @@ void Device::create_instance(const DeviceConfig& config) {
 
   auto res = vkCreateInstance(&instance_create_info, nullptr, &instance_);
   if (res != VK_SUCCESS) {
-    throw std::runtime_error("Failed to create vulkan instance");
+    throw std::runtime_error(std::string("Failed to create vulkan instance: ")
+                                 .append(to_string(res)));
   }
 
   setup_debug_handler_if_needed(&debug_create_info);

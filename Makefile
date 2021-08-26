@@ -26,6 +26,7 @@ LDFLAGS=\
 
 SRCS=\
 	src/engine/device.cc \
+	src/engine/vk.cc \
 	src/window.cc
 
 HDRS=\
@@ -35,10 +36,10 @@ HDRS=\
 	src/engine/device.h \
 	src/engine/error.h \
 	src/engine/version.h \
+	src/engine/vk.h \
 	src/event_service.h \
 	src/glfw3.h \
 	src/pad.h \
-	src/vk.h \
 	src/window.h
 
 .PHONY: all lint tidy fmt clean
@@ -47,19 +48,18 @@ all: elysian
 
 lint: tidy
 
-tidy: $(HDRS) $(SRCS)
-	$(TIDY) --fix -header-filter="src/*\.h$$" $(SRCS) src/main.cc -- -x c++ $(CFLAGS)
+tidy: $(SRCS) src/main.cc
+	$(TIDY) --fix -header-filter=src/ $^ -- -x c++ $(CFLAGS)
 
 format: fmt
 
-fmt: $(HDRS) $(SRCS)
-	$(FMT) -i $(HDRS) $(SRCS) src/main.cc
+fmt: $(HDRS) $(SRCS) src/main.cc
+	$(FMT) -i $^
 
 %.o: %.cc %.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
 elysian: $(SRCS) $(HDRS) src/main.cc
-	@echo $(SRCS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SRCS) $(LDFLAGS) src/main.cc -o elysian
 
 clean:
