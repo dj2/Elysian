@@ -78,6 +78,8 @@ Swapchain::Swapchain(Device* device) : device_(device) {
 }
 
 Swapchain::~Swapchain() {
+  vkDeviceWaitIdle(device_->device());
+
   std::for_each(std::begin(swap_chain_image_views_),
                 std::end(swap_chain_image_views_),
                 [device = device_->device()](VkImageView view) {

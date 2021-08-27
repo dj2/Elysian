@@ -69,6 +69,11 @@ auto Window::dimensions() const -> Dimensions {
   int h = 0;
   glfwGetFramebufferSize(window_, &w, &h);
 
+  while (w == 0 || h == 0) {
+    Poll();
+    glfwGetFramebufferSize(window_, &w, &h);
+  }
+
   return {
       .width = static_cast<uint32_t>(w),
       .height = static_cast<uint32_t>(h),
