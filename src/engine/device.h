@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -105,6 +106,13 @@ class DeviceConfig {
 
 class Device {
  public:
+  struct QueueFamilyIndices {
+    std::optional<uint32_t> graphics_family;
+    std::optional<uint32_t> compute_family;
+    std::optional<uint32_t> transfer_family;
+    std::optional<uint32_t> present_family;
+  };
+
   explicit Device(const DeviceConfig& config);
   Device(const Device&) = delete;
   Device(const Device&&) = delete;
@@ -118,6 +126,20 @@ class Device {
   auto create_surface(const SurfaceCreateCallback& cb) -> void {
     surface_ = cb(instance_);
   }
+
+  [[nodiscard]] auto device() const -> VkDevice { return device_; }
+
+  [[nodiscard]] auto physical_device() const -> VkPhysicalDevice {
+    return physical_device_.device;
+  }
+
+  [[nodiscard]] auto surface() const -> VkSurfaceKHR { return surface_; }
+
+  [[nodiscard]] auto dimensions() const -> Dimensions {
+    return dimensions_cb_();
+  }
+
+  [[nodiscard]] auto find_queue_families() -> QueueFamilyIndices;
 
  private:
   void check_validation_available_if_needed() const;

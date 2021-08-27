@@ -11,26 +11,13 @@
 #include <unordered_set>
 
 #include "src/dimensions.h"
+#include "src/engine/swapchain.h"
 #include "src/engine/vk.h"
 #include "src/event_service.h"
 #include "src/pad.h"
 
 namespace el::engine {
 namespace {
-
-struct SwapChainSupportDetails {
-  VkSurfaceCapabilitiesKHR capabilities{};
-  EL_PAD(4);
-  std::vector<VkSurfaceFormatKHR> formats;
-  std::vector<VkPresentModeKHR> present_modes;
-};
-
-struct QueueFamilyIndices {
-  std::optional<uint32_t> graphics_family;
-  std::optional<uint32_t> compute_family;
-  std::optional<uint32_t> transfer_family;
-  std::optional<uint32_t> present_family;
-};
 
 const char* const kEngineName = "Elysian Engine";
 constexpr uint8_t kEngineMajor = 0;
@@ -148,8 +135,8 @@ auto build_instance_create_info(VkApplicationInfo* app_info,
 }
 
 auto find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
-    -> std::optional<QueueFamilyIndices> {
-  QueueFamilyIndices indices;
+    -> std::optional<Device::QueueFamilyIndices> {
+  Device::QueueFamilyIndices indices;
 
   uint32_t queue_family_count = 0;
   vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
@@ -203,35 +190,6 @@ auto find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
   return {};
 }
 
-auto query_swap_chain_support(VkPhysicalDevice device, VkSurfaceKHR surface)
-    -> std::optional<SwapChainSupportDetails> {
-  SwapChainSupportDetails details;
-
-  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
-                                            &details.capabilities);
-
-  uint32_t format_count = 0;
-  vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, nullptr);
-  if (format_count != 0) {
-    details.formats.resize(format_count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count,
-                                         details.formats.data());
-  }
-
-  uint32_t present_mode_count = 0;
-  vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
-                                            &present_mode_count, nullptr);
-  if (present_mode_count != 0) {
-    details.present_modes.resize(present_mode_count);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-        device, surface, &present_mode_count, details.present_modes.data());
-  }
-  if (!details.formats.empty() && !details.present_modes.empty()) {
-    return {details};
-  }
-  return {};
-}
-
 auto device_extensions(VkPhysicalDevice device)
     -> std::optional<std::vector<const char*>> {
   uint32_t count = 0;
@@ -272,7 +230,7 @@ auto is_device_suitable(const DeviceConfig& config,
 
   return props.apiVersion >= config.version().to_vk() &&
          device_extensions(device).has_value() &&
-         query_swap_chain_support(device, surface) &&
+         Swapchain::query_swap_chain_support(device, surface) &&
          find_queue_families(device, surface);
 }
 
@@ -319,13 +277,22 @@ Device::~Device() {
   vkDestroyInstance(instance_, nullptr);
 }
 
+auto Device::find_queue_families() -> Device::QueueFamilyIndices {
+  auto indices =
+      el::engine::find_queue_families(physical_device_.device, surface_);
+  if (!indices.has_value()) {
+    throw std::runtime_error("Unable to retrieve queue family indices");
+  }
+  return indices.value();
+}
+
 auto Device::create_logical_device() -> void {
-  auto indices = find_queue_families(physical_device_.device, surface_);
+  auto indices = find_queue_families();
 
   std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
   std::unordered_set<uint32_t> unique_queue_families = {
-      indices->graphics_family.value(), indices->compute_family.value(),
-      indices->transfer_family.value(), indices->present_family.value()};
+      indices.graphics_family.value(), indices.compute_family.value(),
+      indices.transfer_family.value(), indices.present_family.value()};
   float priority = 1.0F;
   std::for_each(std::begin(unique_queue_families),
                 std::end(unique_queue_families), [&](uint32_t idx) {
@@ -356,18 +323,16 @@ auto Device::create_logical_device() -> void {
         std::string("Failed to create device: ").append(to_string(res)));
   }
 
-  vkGetDeviceQueue(device_, indices->graphics_family.value(), 0,
+  vkGetDeviceQueue(device_, indices.graphics_family.value(), 0,
                    &graphics_queue_);
-  vkGetDeviceQueue(device_, indices->compute_family.value(), 0,
-                   &compute_queue_);
-  vkGetDeviceQueue(device_, indices->transfer_family.value(), 0,
+  vkGetDeviceQueue(device_, indices.compute_family.value(), 0, &compute_queue_);
+  vkGetDeviceQueue(device_, indices.transfer_family.value(), 0,
                    &transfer_queue_);
-  vkGetDeviceQueue(device_, indices->present_family.value(), 0,
-                   &present_queue_);
+  vkGetDeviceQueue(device_, indices.present_family.value(), 0, &present_queue_);
 }
 
 auto Device::create_command_pools() -> void {
-  auto indices = find_queue_families(physical_device_.device, surface_);
+  auto indices = find_queue_families();
 
   struct PoolInfo {
     uint32_t index = 0;
@@ -376,15 +341,15 @@ auto Device::create_command_pools() -> void {
   };
   std::array<PoolInfo, 3> pools = {
       PoolInfo{
-          .index = indices->graphics_family.value(),
+          .index = indices.graphics_family.value(),
           .pool = &graphics_cmd_pool_,
       },
       PoolInfo{
-          .index = indices->transfer_family.value(),
+          .index = indices.transfer_family.value(),
           .pool = &transfer_cmd_pool_,
       },
       PoolInfo{
-          .index = indices->compute_family.value(),
+          .index = indices.compute_family.value(),
           .pool = &compute_cmd_pool_,
       },
   };

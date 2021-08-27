@@ -27,6 +27,7 @@ LDFLAGS=\
 
 SRCS=\
 	src/engine/device.cc \
+	src/engine/swapchain.cc \
 	src/engine/vk.cc \
 	src/window.cc
 
@@ -35,6 +36,7 @@ HDRS=\
 	src/engine.h \
 	src/engine/device.h \
 	src/engine/error.h \
+	src/engine/swapchain.h \
 	src/engine/version.h \
 	src/engine/vk.h \
 	src/event_service.h \

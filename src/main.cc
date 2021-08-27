@@ -38,6 +38,8 @@ auto main() -> int {
           .set_surface_cb(
               [&window](el::engine::Device& d) { window.create_surface(d); }));
 
+  el::engine::Swapchain swapchain(&device);
+
   while (!window.shouldClose()) {
     el::Window::Poll();
   }
