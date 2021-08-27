@@ -374,16 +374,16 @@ auto Device::create_command_pools() -> void {
     EL_PAD(4);
     VkCommandPool* pool = nullptr;
   };
-  PoolInfo pools[3] = {
-      {
+  std::array<PoolInfo, 3> pools = {
+      PoolInfo{
           .index = indices->graphics_family.value(),
           .pool = &graphics_cmd_pool_,
       },
-      {
+      PoolInfo{
           .index = indices->transfer_family.value(),
           .pool = &transfer_cmd_pool_,
       },
-      {
+      PoolInfo{
           .index = indices->compute_family.value(),
           .pool = &compute_cmd_pool_,
       },
@@ -505,10 +505,32 @@ void Device::create_instance(const DeviceConfig& config) {
   auto instance_create_info = build_instance_create_info(&app_info, exts);
   auto debug_create_info = build_debug_create_info(config);
 
+  std::vector<VkValidationFeatureEnableEXT> enabled_validation_features;
+  std::vector<VkValidationFeatureDisableEXT> disabled_validation_features;
+  VkValidationFeaturesEXT validation_features = {};
   if (enable_validation_) {
+    debug_create_info.pNext = instance_create_info.pNext;
+
     instance_create_info.enabledLayerCount = kValidationLayers.size();
     instance_create_info.ppEnabledLayerNames = kValidationLayers.data();
     instance_create_info.pNext = &debug_create_info;
+
+    enabled_validation_features = {
+        VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
+    disabled_validation_features = {VK_VALIDATION_FEATURE_DISABLE_ALL_EXT};
+
+    validation_features = {
+        .sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT,
+        .enabledValidationFeatureCount =
+            uint32_t(enabled_validation_features.size()),
+        .pEnabledValidationFeatures = enabled_validation_features.data(),
+        .disabledValidationFeatureCount =
+            uint32_t(disabled_validation_features.size()),
+        .pDisabledValidationFeatures = disabled_validation_features.data(),
+    };
+
+    validation_features.pNext = instance_create_info.pNext;
+    instance_create_info.pNext = &validation_features;
   }
 
   auto res = vkCreateInstance(&instance_create_info, nullptr, &instance_);
