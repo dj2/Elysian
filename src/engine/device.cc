@@ -232,7 +232,8 @@ auto query_swap_chain_support(VkPhysicalDevice device, VkSurfaceKHR surface)
   return {};
 }
 
-auto check_device_extensions_supported(VkPhysicalDevice device) -> bool {
+auto device_extensions(VkPhysicalDevice device)
+    -> std::optional<std::vector<const char*>> {
   uint32_t count = 0;
   vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
 
@@ -246,7 +247,21 @@ auto check_device_extensions_supported(VkPhysicalDevice device) -> bool {
       [&required_exts](const VkExtensionProperties prop) {
         required_exts.erase(static_cast<const char*>(prop.extensionName));
       });
-  return required_exts.empty();
+  if (!required_exts.empty()) {
+    return {};
+  }
+
+  std::vector<const char*> ret(std::begin(kDeviceExtensions),
+                               std::end(kDeviceExtensions));
+  if (std::any_of(std::begin(exts), std::end(exts),
+                  [](const VkExtensionProperties prop) {
+                    return std::string(
+                               static_cast<const char*>(prop.extensionName)) ==
+                           "VK_KHR_portability_subset";
+                  })) {
+    ret.push_back("VK_KHR_portability_subset");
+  }
+  return ret;
 }
 
 auto is_device_suitable(const DeviceConfig& config,
@@ -256,7 +271,7 @@ auto is_device_suitable(const DeviceConfig& config,
   vkGetPhysicalDeviceProperties(device, &props);
 
   return props.apiVersion >= config.version().to_vk() &&
-         check_device_extensions_supported(device) &&
+         device_extensions(device).has_value() &&
          query_swap_chain_support(device, surface) &&
          find_queue_families(device, surface);
 }
@@ -278,7 +293,7 @@ Device::Device(const DeviceConfig& config)
   create_surface(*this);
   pick_physical_device(config);
   create_logical_device();
-  create_command_pool();
+  create_command_pools();
 
   event_service_->add(
       el::EventType::kResized,
@@ -286,6 +301,10 @@ Device::Device(const DeviceConfig& config)
 }
 
 Device::~Device() {
+  vkDestroyCommandPool(device_, compute_cmd_pool_, nullptr);
+  vkDestroyCommandPool(device_, transfer_cmd_pool_, nullptr);
+  vkDestroyCommandPool(device_, graphics_cmd_pool_, nullptr);
+
   vkDestroyDevice(device_, nullptr);
   vkDestroySurfaceKHR(instance_, surface_, nullptr);
 
@@ -293,7 +312,7 @@ Device::~Device() {
       // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
       reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
           vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
-  if (vkDestroyDebugUtilsMessengerEXT) {
+  if (vkDestroyDebugUtilsMessengerEXT != nullptr) {
     vkDestroyDebugUtilsMessengerEXT(instance_, debug_handler_, nullptr);
   }
 
@@ -317,6 +336,7 @@ auto Device::create_logical_device() -> void {
                        .pQueuePriorities = &priority});
                 });
 
+  auto dev_exts = device_extensions(physical_device_.device).value();
   VkPhysicalDeviceFeatures device_features{};
   VkDeviceCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -324,8 +344,8 @@ auto Device::create_logical_device() -> void {
       .pQueueCreateInfos = queue_create_infos.data(),
       .enabledLayerCount = 0,
       .ppEnabledLayerNames = nullptr,
-      .enabledExtensionCount = kDeviceExtensions.size(),
-      .ppEnabledExtensionNames = kDeviceExtensions.data(),
+      .enabledExtensionCount = uint32_t(dev_exts.size()),
+      .ppEnabledExtensionNames = dev_exts.data(),
       .pEnabledFeatures = &device_features,
   };
 
@@ -346,8 +366,44 @@ auto Device::create_logical_device() -> void {
                    &present_queue_);
 }
 
-auto Device::create_command_pool() -> void {
+auto Device::create_command_pools() -> void {
+  auto indices = find_queue_families(physical_device_.device, surface_);
 
+  struct PoolInfo {
+    uint32_t index = 0;
+    EL_PAD(4);
+    VkCommandPool* pool = nullptr;
+  };
+  PoolInfo pools[3] = {
+      {
+          .index = indices->graphics_family.value(),
+          .pool = &graphics_cmd_pool_,
+      },
+      {
+          .index = indices->transfer_family.value(),
+          .pool = &transfer_cmd_pool_,
+      },
+      {
+          .index = indices->compute_family.value(),
+          .pool = &compute_cmd_pool_,
+      },
+  };
+
+  auto cmd_pool_creator = [device = device_](const PoolInfo& info) {
+    VkCommandPoolCreateInfo create_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = info.index,
+    };
+
+    auto res = vkCreateCommandPool(device, &create_info, nullptr, info.pool);
+    if (res != VK_SUCCESS) {
+      throw std::runtime_error(std::string("failed to create command pool: ")
+                                   .append(to_string(res)));
+    }
+  };
+
+  std::for_each(std::begin(pools), std::end(pools), cmd_pool_creator);
 }
 
 void Device::check_validation_available_if_needed() const {

@@ -106,7 +106,12 @@ class DeviceConfig {
 class Device {
  public:
   explicit Device(const DeviceConfig& config);
+  Device(const Device&) = delete;
+  Device(const Device&&) = delete;
   ~Device();
+
+  auto operator=(const Device&) -> Device& = delete;
+  auto operator=(const Device&&) -> Device& = delete;
 
   auto set_resized() -> void { framebuffer_resized_ = true; }
 
@@ -123,20 +128,24 @@ class Device {
   void create_instance(const DeviceConfig& config);
   void pick_physical_device(const DeviceConfig& config);
   void create_logical_device();
-  void create_command_pool();
+  void create_command_pools();
 
   DimensionsCallback dimensions_cb_;
-  EventService* event_service_ = nullptr;
+  EventService* event_service_;
 
   VkInstance instance_ = {};
-  VkDebugUtilsMessengerEXT debug_handler_ = nullptr;
-  PhysicalDevice physical_device_ = {};
-  VkDevice device_ = nullptr;
-  VkSurfaceKHR surface_ = nullptr;
-  VkQueue graphics_queue_ = nullptr;
-  VkQueue compute_queue_ = nullptr;
-  VkQueue transfer_queue_ = nullptr;
-  VkQueue present_queue_ = nullptr;
+  VkDebugUtilsMessengerEXT debug_handler_{};
+  PhysicalDevice physical_device_;
+  VkDevice device_{};
+  VkSurfaceKHR surface_{};
+  VkQueue graphics_queue_{};
+  VkQueue compute_queue_{};
+  VkQueue transfer_queue_{};
+  VkQueue present_queue_{};
+
+  VkCommandPool graphics_cmd_pool_{};
+  VkCommandPool transfer_cmd_pool_{};
+  VkCommandPool compute_cmd_pool_{};
 
   bool enable_validation_ = false;
   bool framebuffer_resized_ = false;
