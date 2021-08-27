@@ -37,10 +37,10 @@ class Swapchain {
   Device* device_ = nullptr;
 
   VkSwapchainKHR swap_chain_{};
-  std::vector<VkImage> swap_chain_images_;
-  std::vector<VkImageView> swap_chain_image_views_;
-  VkFormat swap_chain_image_format_{};
-  VkExtent2D swap_chain_extent_{};
+  std::vector<VkImage> images_;
+  std::vector<VkImageView> image_views_;
+  VkFormat image_format_{};
+  VkExtent2D extent_{};
   EL_PAD(4);
 };
 

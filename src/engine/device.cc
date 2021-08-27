@@ -219,7 +219,7 @@ auto device_extensions(VkPhysicalDevice device)
                   })) {
     ret.push_back("VK_KHR_portability_subset");
   }
-  return ret;
+  return std::move(ret);
 }
 
 auto is_device_suitable(const DeviceConfig& config,

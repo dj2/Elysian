@@ -80,8 +80,7 @@ Swapchain::Swapchain(Device* device) : device_(device) {
 Swapchain::~Swapchain() {
   vkDeviceWaitIdle(device_->device());
 
-  std::for_each(std::begin(swap_chain_image_views_),
-                std::end(swap_chain_image_views_),
+  std::for_each(std::begin(image_views_), std::end(image_views_),
                 [device = device_->device()](VkImageView view) {
                   vkDestroyImageView(device, view, nullptr);
                 });
@@ -142,23 +141,23 @@ auto Swapchain::create_swapchain() -> void {
   }
 
   vkGetSwapchainImagesKHR(device_->device(), swap_chain_, &img_count, nullptr);
-  swap_chain_images_.resize(img_count);
+  images_.resize(img_count);
   vkGetSwapchainImagesKHR(device_->device(), swap_chain_, &img_count,
-                          swap_chain_images_.data());
+                          images_.data());
 
-  swap_chain_image_format_ = fmt.format;
-  swap_chain_extent_ = extent;
+  image_format_ = fmt.format;
+  extent_ = extent;
 }
 
 auto Swapchain::create_image_views() -> void {
-  swap_chain_image_views_.resize(swap_chain_images_.size());
+  image_views_.resize(images_.size());
 
   auto view_creator = [this](const VkImage& image) {
     VkImageViewCreateInfo create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = image,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = swap_chain_image_format_,
+        .format = image_format_,
         .components = {.r = VK_COMPONENT_SWIZZLE_IDENTITY,
                        .g = VK_COMPONENT_SWIZZLE_IDENTITY,
                        .b = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -179,8 +178,8 @@ auto Swapchain::create_image_views() -> void {
     return view;
   };
 
-  std::transform(std::begin(swap_chain_images_), std::end(swap_chain_images_),
-                 std::begin(swap_chain_image_views_), view_creator);
+  std::transform(std::begin(images_), std::end(images_),
+                 std::begin(image_views_), view_creator);
 }
 
 }  // namespace el::engine
