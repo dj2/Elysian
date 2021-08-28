@@ -21,7 +21,10 @@ enum class Type {
 
 class ShaderConfig {
  public:
-  explicit ShaderConfig(Device* device) : device_(device) { assert(device); }
+  explicit ShaderConfig(Device* device) : device_(device) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    assert(device);
+  }
 
   auto set_data(std::vector<uint32_t>&& data) -> ShaderConfig& {
     data_ = std::move(data);
@@ -54,7 +57,7 @@ class ShaderConfig {
   Device* device_ = nullptr;
   std::string entrypoint_name_ = "main";
   std::vector<uint32_t> data_;
-  shader::Type type_;
+  shader::Type type_ = shader::Type::kVertex;
   EL_PAD(4);
 };
 
