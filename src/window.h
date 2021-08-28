@@ -47,11 +47,11 @@ class Window {
  public:
   explicit Window(const WindowConfig& config);
   Window(const Window&) = delete;
-  Window(const Window&&) = delete;
+  Window(Window&&) = delete;
   ~Window();
 
   auto operator=(const Window&) -> Window& = delete;
-  auto operator=(const Window&&) -> Window& = delete;
+  auto operator=(Window&&) -> Window& = delete;
 
   // Returned strings are owned by the window system and will be free'd.
   static auto required_engine_extensions() -> std::vector<const char*>;

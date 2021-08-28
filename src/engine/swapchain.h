@@ -24,11 +24,11 @@ class Swapchain {
 
   explicit Swapchain(Device* device);
   Swapchain(const Swapchain&) = delete;
-  Swapchain(const Swapchain&&) = delete;
+  Swapchain(Swapchain&&) = delete;
   ~Swapchain();
 
   auto operator=(const Swapchain&) -> Swapchain& = delete;
-  auto operator=(const Swapchain&&) -> Swapchain& = delete;
+  auto operator=(Swapchain&&) -> Swapchain& = delete;
 
  private:
   auto create_swapchain() -> void;

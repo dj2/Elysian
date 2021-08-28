@@ -115,11 +115,11 @@ class Device {
 
   explicit Device(const DeviceConfig& config);
   Device(const Device&) = delete;
-  Device(const Device&&) = delete;
+  Device(Device&&) = delete;
   ~Device();
 
   auto operator=(const Device&) -> Device& = delete;
-  auto operator=(const Device&&) -> Device& = delete;
+  auto operator=(Device&&) -> Device& = delete;
 
   auto set_resized() -> void { framebuffer_resized_ = true; }
 
